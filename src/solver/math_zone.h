@@ -6,9 +6,6 @@ void general_complex_matrix_inverse(
       std::complex<double>* a, 
       const int dim, int* ipiv );
 
-void general_real_matrix_inverse(
-      double* a, const int dim, int* ipiv );
-
 void Hermitian_matrix_sqrt_inver(
       std::complex<double>* a, 
       double* eigen_val,

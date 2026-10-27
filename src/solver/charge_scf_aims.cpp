@@ -5,7 +5,9 @@
 #include "../mpi_environment.h"
 #include "../para/input.h"
 #include "../global_variables.h"
-#include "math_zone.h"
+#include "../matrix_types.h"
+#include <Eigen/LU>
+#include <iostream>
 
 #include <cmath>
 #include <sstream>
@@ -278,39 +280,35 @@ namespace DFT_plus_DMFT
 
     if(mix_step==1) return;
 
+    const int n = this->dRrho.size();
+
     //Calculate Abar
-    std::vector<double> Abar(this->dRrho.size()*this->dRrho.size(), 0.0);
+    RealMatrix Abar = RealMatrix::Zero(n, n);
 
     for(int is=0; is<this->dRrho.back().size();is++)
-      for(int i=0; i<this->dRrho.size(); i++)
-        for(int j=0; j<this->dRrho.size(); j++){
+      for(int i=0; i<n; i++)
+        for(int j=0; j<n; j++){
           for(int igrid=0; igrid<this->dRrho[i][is].size(); igrid++)
-            Abar[i*this->dRrho.size()+j] += std::pow(this->partition_tab[igrid],2)*
+            Abar(i,j) += std::pow(this->partition_tab[igrid],2)*
               this->dRrho[i][is][igrid]*this->dRrho[j][is][igrid];
         }
     
-    std::vector<double> Abar_tmp(Abar);
-    MPI_Allreduce(&Abar_tmp[0], &Abar[0], Abar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-    std::vector<int> ipiv(this->dRrho.size());
-    general_real_matrix_inverse(&Abar[0], this->dRrho.size(), &ipiv[0]);
+    MPI_Allreduce(MPI_IN_PLACE, Abar.data(), Abar.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
     //dRR
-    std::vector<double> dRR(this->dRrho.size(), 0.0);
+    Eigen::VectorXd dRR = Eigen::VectorXd::Zero(n);
     for(int is=0; is<this->dRrho.back().size();is++)
-      for(int i=0; i<this->dRrho.size(); i++)
+      for(int i=0; i<n; i++)
         for(int igrid=0; igrid<this->dRrho[i][is].size(); igrid++)
           dRR[i] += std::pow(this->partition_tab[igrid],2)*
            this->dRrho[i][is][igrid]*this->Rrho.back()[is][igrid];
 
-    std::vector<double> dRR_tmp(dRR);
-    MPI_Allreduce(&dRR_tmp[0], &dRR[0], dRR.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, dRR.data(), dRR.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-    //alpha
-    alpha.resize(this->dRrho.size(), 0.0);
-    for(int i=0; i<this->dRrho.size(); i++)
-      for(int j=0; j<this->dRrho.size(); j++)
-        alpha[i] -= Abar[j*this->dRrho.size()+i]*dRR[j];
+    // Abar is the symmetric residual Gram matrix: Abar * alpha = -dRR.
+    alpha.resize(n);
+    Eigen::Map<Eigen::VectorXd> coefficients(alpha.data(), n);
+    coefficients = Abar.partialPivLu().solve(-dRR);
 
     return;
   }

@@ -26,22 +26,6 @@ void general_complex_matrix_inverse(
   }
 }
 
-void general_real_matrix_inverse(
-      double* a, const int dim, int* ipiv )
-{
-  lapack_int info=LAPACKE_dgetrf(LAPACK_ROW_MAJOR, dim, dim, a, dim, ipiv);
-  if(info != 0 ){
-    std::cerr << "Error in LAPACKE_zgetrf!!!" << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
-
-  info=LAPACKE_dgetri(LAPACK_ROW_MAJOR, dim, a, dim, ipiv);
-  if(info != 0 ){
-    std::cerr << "Error in LAPACKE_zgetri!!!" << std::endl;
-    std::exit(EXIT_FAILURE);
-  }
-}
-
 void Hermitian_matrix_sqrt_inver(
         std::complex<double>* a,
         double* eigen_val,
