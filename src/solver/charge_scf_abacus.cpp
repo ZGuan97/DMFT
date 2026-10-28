@@ -116,8 +116,7 @@ bool Charge_SCF_abacus::update(solver& task, int charge_step)
         if(ik%mpi_ntasks()!=mpi_rank()) continue;
         auto P=std::vector<Matrix>(natom);
         for(int a=0;a<natom;a++)
-            P[a]=Eigen::Map<const Matrix>(task.proj.proj_access(k_indices.size())[a][0].data(),
-                                         n_band_window,atom.iatom_norb()[a]);
+            P[a]=task.proj.proj_access(k_indices.size())[a][0];
         k_indices.push_back(ik);
         Sigma_k.push_back(lattice::self_energy(n_band_window,n_omega,P,Sigma_local));
     }

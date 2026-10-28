@@ -99,8 +99,7 @@ void spectrum::eva_spectrum(
           const int iatom = atom.ineq_iatom(ineq);
           const int m_tot = norb_sub[iatom];
 
-          const Eigen::Map<const Matrix> P(
-              proj.proj_access(ik)[iatom][is].data(), wbands[is], m_tot);
+          const Matrix& P = proj.proj_access(ik)[iatom][is];
           const Matrix G_local = P.adjoint() * KS_Gw[iomega] * P;
           for(int m=0; m<m_tot; m++)
             this->Aw_loc[ineq][is][iomega][m] -=
@@ -296,20 +295,19 @@ void spectrum::eva_spectrum_normalization(
         {
           const int iatom = atom.ineq_iatom(ineq);
           const int m_tot = norb_sub[iatom];
-          const std::vector<std::complex<double>>& projector = proj.proj_access(ik)[iatom][is];
+          const Matrix& projector = proj.proj_access(ik)[iatom][is];
 
           for(int m=0; m<m_tot; m++)
           {
             const int m_index = m*m_tot+m;
             for(int iband=0; iband<wbands[is]; iband++)
             {
-              int index = iband*m_tot + m;
               int iDOS_band = corr_DOS_bands[is][iband];
 
               this->Aw_loc[ineq][is][iomega][m] +=
-                  ( std::conj(projector[index])*
+                  ( std::conj(projector(iband, m))*
                   this->Aw_ik_iband[is][ik][iDOS_band][iomega]
-                  *projector[index]*fk[i_k_point] ).real();
+                  *projector(iband, m)*fk[i_k_point] ).real();
             }//iband
           }//m
         }//ineq

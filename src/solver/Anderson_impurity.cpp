@@ -220,8 +220,7 @@ namespace DMFT
 
             Eigen::Map<Matrix> Gf(
                 this->Green_fun_omega[ineq][is][iomega].data(), m_tot, m_tot);
-            const Eigen::Map<const Matrix> P(
-                proj.proj_access(ik_count)[iatom][is].data(), wbands[is], m_tot);
+            const Matrix& P = proj.proj_access(ik_count)[iatom][is];
             Gf += fk[ik] * P.adjoint() * G_lat * P;
           }//ineq
         }//iomega      
@@ -998,14 +997,14 @@ namespace DMFT
 
         for(int is=0; is<nspin; is++)
         {
-          const std::vector<std::complex<double>>& projector = proj.proj_access(ik_count)[iatom][is];
+          const Matrix& projector = proj.proj_access(ik_count)[iatom][is];
       
             for(int m=0; m<m_tot; m++)
               for(int iband=0; iband<wbands[is]; iband++)
                 local_occ_tmp[iatom][is][m] += 
-                  ( std::conj(projector[iband*m_tot + m])*
+                  ( std::conj(projector(iband, m))*
                     dft_occ_num[is][ik][ wb2ib[is][iband] ]*fk[ik]*
-                    projector[iband*m_tot + m] ).real();
+                    projector(iband, m) ).real();
         }//is
         ik_count++;
       }//ik
@@ -1082,14 +1081,14 @@ namespace DMFT
         for(int is=0; is<nspin; is++)
         {
           const std::vector<double>& epsilon = space.eigen_val()[is][ik];     
-          const std::vector<std::complex<double>>& projector = proj.proj_access(ik_count)[iatom][is];
+          const Matrix& projector = proj.proj_access(ik_count)[iatom][is];
       
             for(int m=0; m<m_tot; m++)
               for(int iband=0; iband<wbands[is]; iband++)
                 local_occ_tmp[iatom][is][m] += 
-                  ( std::conj(projector[iband*m_tot + m])/
+                  ( std::conj(projector(iband, m))/
                     (1.0+std::exp(beta*(epsilon[iband]-mu)))*
-                    projector[iband*m_tot + m]*fk[ik] ).real();
+                    projector(iband, m)*fk[ik] ).real();
         }//is
         ik_count++;
       }//ik
@@ -1167,14 +1166,14 @@ namespace DMFT
         {
           auto& Gf = local_gf[ineq][is];
           const std::vector<double>& epsilon = space.eigen_val()[is][ik];     
-          const std::vector<std::complex<double>>& projector = proj.proj_access(ik_count)[iatom][is];
+          const Matrix& projector = proj.proj_access(ik_count)[iatom][is];
       
           #pragma omp parallel for
           for(int iomega=0; iomega<nomega; iomega++)
             for(int m=0; m<m_tot; m++)
               for(int iband=0; iband<wbands[is]; iband++)
-                Gf[iomega][m*m_tot+m] += std::conj(projector[iband*m_tot + m])/
-                (im*freq[iomega] + mu - epsilon[iband])*projector[iband*m_tot + m]*fk[ik];
+                Gf[iomega][m*m_tot+m] += std::conj(projector(iband, m))/
+                (im*freq[iomega] + mu - epsilon[iband])*projector(iband, m)*fk[ik];
         }//is
         ik_count++;
       }//ik

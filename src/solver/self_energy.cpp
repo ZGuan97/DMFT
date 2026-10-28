@@ -83,7 +83,7 @@ namespace DMFT
         const int axis_flag, const int mag,
         const int ispin, const std::vector<int>& wbands,
         DFT_output::atoms_info& atom,
-        const std::vector<std::vector<std::vector<std::complex<double>>>>& projector,
+        const std::vector<std::vector<Matrix>>& projector,
         std::vector<Matrix>& Sigma)
   {
     debug::codestamp("self_energy::evalute_lattice_sigma");
@@ -110,7 +110,7 @@ namespace DMFT
             const int flip = mag==1 && atom.magnetic(iatom)*atom.magnetic(a)==-1;
             spin = (ispin+flip)%2;
           }
-          const Eigen::Map<const Matrix> P(projector[a][ispin].data(), nbands, norb);
+          const Matrix& P = projector[a][ispin];
           const Eigen::Map<const Matrix> local(local_sigma[ineq][spin][iw].data(), norb, norb);
           // Preserve the diagonal-local-self-energy approximation.
           const Matrix weighted_P = P * local.diagonal().asDiagonal();
@@ -123,7 +123,7 @@ namespace DMFT
         const int axis_flag, const int mag,
         const int ispin, const std::vector<int>& wbands,
         DFT_output::atoms_info& atom,
-        const std::vector<std::vector<std::vector<std::complex<double>>>>& projector,
+        const std::vector<std::vector<Matrix>>& projector,
         Matrix& Sigma_infty)
   {
     debug::codestamp("self_energy::evalute_lattice_sigma_infty");
@@ -148,7 +148,7 @@ namespace DMFT
           const int flip = mag==1 && atom.magnetic(iatom)*atom.magnetic(a)==-1;
           spin = (ispin+flip)%2;
         }
-        const Eigen::Map<const Matrix> P(projector[a][ispin].data(), nbands, norb);
+        const Matrix& P = projector[a][ispin];
         const Eigen::Map<const Matrix> local(local_sigma[ineq][spin][iw].data(), norb, norb);
         Eigen::VectorXcd diagonal = local.diagonal();
         // Legacy infty estimate discards Im Sigma only on representative atoms.

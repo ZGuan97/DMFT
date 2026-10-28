@@ -35,16 +35,14 @@ namespace DMFT
         const int axis_flag, const int mag,
         const int ispin, const std::vector<int>& wbands,
         DFT_output::atoms_info& atom,
-        const std::vector<std::vector<std::vector<
-        std::complex<double>>>>&  projector,
+        const std::vector<std::vector<DFT_plus_DMFT::Matrix>>& projector,
         std::vector<DFT_plus_DMFT::Matrix>& Sigma);
 
     void evalute_lattice_sigma_infty(
         const int axis_flag, const int mag,
         const int ispin, const std::vector<int>& wbands,
         DFT_output::atoms_info& atom,
-        const std::vector<std::vector<std::vector<
-        std::complex<double>>>>&  projector,
+        const std::vector<std::vector<DFT_plus_DMFT::Matrix>>& projector,
         DFT_plus_DMFT::Matrix& Sigma_infty);
 
     // void embeding_self_energy(const int impurity_solver, )
