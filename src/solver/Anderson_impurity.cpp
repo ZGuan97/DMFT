@@ -1,12 +1,14 @@
 #include "Anderson_impurity.h"
 #include "../mpi_environment.h"
 #include "math_zone.h"
+#include "../matrix_types.h"
+#include <Eigen/Dense>
 #include "../debug.h"
 #include "../timer.h"
 #include "../constants.h"
 #include "../global_variables.h"
 
-#include <mkl.h>
+using DFT_plus_DMFT::Matrix;
 #include <mpi.h>
 #include <cmath>
 #include <iostream>
@@ -206,53 +208,24 @@ namespace DMFT
               lattice_Sigma);
 
         const std::vector<double>& epsilon = space.eigen_val()[is][ik];    
-        std::vector<std::complex<double>> Gf_latt(wbands[is]*wbands[is]);
-        std::vector<int> ipiv(wbands[is],0);
-        
         for(int iomega=0; iomega<nomega; iomega++)
         {
-          for(int iband1=0; iband1<wbands[is]; iband1++)
-          {
-            for(int iband2=0; iband2<wbands[is]; iband2++)
-            {
-              int band_index = iband1*wbands[is]+iband2;
-
-              if(iband1==iband2)
-                  Gf_latt[band_index] = im*freq[iomega] + mu
-                        -epsilon[iband1] - lattice_Sigma[iomega][band_index];
-              else
-                  Gf_latt[band_index] = -lattice_Sigma[iomega][band_index];
-
-            }//iband2
-          }//iband1
-
-          general_complex_matrix_inverse(&Gf_latt[0], wbands[is], &ipiv[0]);
+          Matrix inverse_G_lat = -Eigen::Map<const Matrix>(
+              lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+          for(int iband=0; iband<wbands[is]; iband++)
+            inverse_G_lat(iband,iband) += im*freq[iomega] + mu - epsilon[iband];
+          const Matrix G_lat = inverse_G_lat.inverse();
 
           for(int ineq=0; ineq<ineq_num; ineq++)
           {
             const int iatom = atom.ineq_iatom(ineq);
             const int m_tot=norb_sub[iatom];
 
-            auto& Gf = this->Green_fun_omega[ineq][is];
-            const std::vector<std::complex<double>>& projector = proj.proj_access(ik_count)[iatom][is];
-
-            for(int m1=0; m1<m_tot; m1++)
-            {
-              for(int m2=0; m2<m_tot; m2++)
-              {
-                const int m_index = m1*m_tot+m2;
-                for(int iband1=0; iband1<wbands[is]; iband1++)
-                {
-                  int index1 = iband1*m_tot + m1;
-                  for(int iband2=0; iband2<wbands[is]; iband2++)
-                  {
-                    int index2 = iband2*m_tot + m2;
-                    Gf[iomega][m_index] += std::conj(projector[index1])*Gf_latt[iband1*wbands[is]+iband2]
-                                            *projector[index2]*fk[ik];
-                  }//iband2
-                }//iband1
-              }//m2
-            }//m1
+            Eigen::Map<Matrix> Gf(
+                this->Green_fun_omega[ineq][is][iomega].data(), m_tot, m_tot);
+            const Eigen::Map<const Matrix> P(
+                proj.proj_access(ik_count)[iatom][is].data(), wbands[is], m_tot);
+            Gf += fk[ik] * P.adjoint() * G_lat * P;
           }//ineq
         }//iomega      
         ik_count++;
@@ -934,30 +907,18 @@ namespace DMFT
       const int iatom = atom.ineq_iatom(ineq);
       const int m_tot = norb_sub[iatom];
 
-      std::vector<std::vector<std::vector<std::complex<double>>>>
-          Gf_omega = this->Green_fun_omega[ineq];
-
-      std::vector<std::vector<std::vector<std::complex<double>>>>
-          Weiss = this->Weiss_omega[ineq];
-
-      std::vector<std::vector<std::vector<std::complex<double>>>>&
-          sigma_newa =sigma_new[ineq];
-
-      std::vector<int> ipiv(m_tot,0);
-
-      for(int iomega=0; iomega<nomega; iomega++)   
-      {          
+      for(int iomega=0; iomega<nomega; iomega++)
+      {
         for(int is=0; is<nspin; is++)
-        {         
-          general_complex_matrix_inverse(&Gf_omega[is][iomega][0], m_tot, &ipiv[0]);
-
-          general_complex_matrix_inverse(&Weiss[is][iomega][0], m_tot, &ipiv[0]);
-          
-          for(int m_index=0; m_index<m_tot*m_tot; m_index++)
-            sigma_newa[is][iomega][m_index] = Weiss[is][iomega][m_index] - Gf_omega[is][iomega][m_index];
-
+        {
+          const Eigen::Map<const Matrix> G(
+              this->Green_fun_omega[ineq][is][iomega].data(), m_tot, m_tot);
+          const Eigen::Map<const Matrix> G0(
+              this->Weiss_omega[ineq][is][iomega].data(), m_tot, m_tot);
+          Eigen::Map<Matrix> Sigma(sigma_new[ineq][is][iomega].data(), m_tot, m_tot);
+          Sigma = G0.inverse() - G.inverse();
         }//is
-      }//iomega   
+      }//iomega
     }//ineq
 
     return;

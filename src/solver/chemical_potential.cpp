@@ -2,11 +2,11 @@
 #include "../mpi_environment.h"
 #include "../debug.h"
 #include "../constants.h"
-#include "math_zone.h"
+#include "../matrix_types.h"
+#include <Eigen/Dense>
 #include "../global_variables.h"
 #include "../timer.h"
 
-#include <mkl.h>
 #include <mpi.h>
 #include <iostream>
 #include <cmath>
@@ -254,49 +254,30 @@ namespace DFT_plus_DMFT
             lattice_Sigma_infty);
 
         const auto& epsilon = space.eigen_val()[is][ik];
-        std::vector<std::vector<std::complex<double>>> KS_Gw(nomega);
-        std::vector<std::vector<std::complex<double>>> KS_Gw_infty(nomega);
-        for(int iomega=0; iomega<nomega; iomega++){
-          KS_Gw[iomega].resize(wbands[is]*wbands[is]);
-          KS_Gw_infty[iomega].resize(wbands[is]*wbands[is]);
-        }
-
-        int* ipiv = new int [wbands[is]];
+        std::vector<Matrix> KS_Gw(nomega), KS_Gw_infty(nomega);
+        const Matrix Sigma_infty = Eigen::Map<const Matrix>(
+            lattice_Sigma_infty.data(), wbands[is], wbands[is]);
         for(int iomega=0; iomega<nomega; iomega++)
         {
-          for(int iband1=0; iband1<wbands[is]; iband1++)
-          {
-            for(int iband2=0; iband2<wbands[is]; iband2++)
-            {           
-              if(iband1==iband2){
-                KS_Gw[iomega][iband1*wbands[is]+iband2] = im*freq[iomega] + mu 
-                  -epsilon[iband1]-lattice_Sigma[iomega][iband1*wbands[is]+iband2];
-                
-                KS_Gw_infty[iomega][iband1*wbands[is]+iband2] = im*freq[iomega] + mu 
-                  -epsilon[iband1]-lattice_Sigma_infty[iband1*wbands[is]+iband2];
-              }
-              else{
-                KS_Gw[iomega][iband1*wbands[is]+iband2] = 
-                  -lattice_Sigma[iomega][iband1*wbands[is]+iband2];
-                
-                KS_Gw_infty[iomega][iband1*wbands[is]+iband2] = 
-                  -lattice_Sigma_infty[iband1*wbands[is]+iband2];
-              }
-            }
+          Matrix inverse_G = -Eigen::Map<const Matrix>(
+              lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+          Matrix inverse_G_infty = -Sigma_infty;
+          for(int iband=0; iband<wbands[is]; iband++){
+            const auto z = im*freq[iomega] + mu - epsilon[iband];
+            inverse_G(iband,iband) += z;
+            inverse_G_infty(iband,iband) += z;
           }
-          general_complex_matrix_inverse(&KS_Gw[iomega][0], wbands[is], &ipiv[0]);
-
-          general_complex_matrix_inverse(&KS_Gw_infty[iomega][0], wbands[is], &ipiv[0]);
-        }//iomega
-        delete [] ipiv;
+          KS_Gw[iomega] = inverse_G.inverse();
+          KS_Gw_infty[iomega] = inverse_G_infty.inverse();
+        }
 
         for(int iband=0; iband<wbands[is]; iband++)
         {
           double fik_tmp = 0.0;
 
           for(int iomega=0; iomega<nomega; iomega++)
-            fik_tmp += 2.0/beta*( KS_Gw[iomega][iband*wbands[is]+iband] -
-                        KS_Gw_infty[iomega][iband*wbands[is]+iband] ).real();
+            fik_tmp += 2.0/beta*( KS_Gw[iomega](iband,iband) -
+                        KS_Gw_infty[iomega](iband,iband) ).real();
 
           fik_tmp += 1.0/(1.0+std::exp(beta*(this->epsilon_infty[is][ik_count][iband]-mu)));
 
@@ -479,7 +460,7 @@ namespace DFT_plus_DMFT
       lattice_Sigma[iomega].assign(wbands[is]*wbands[is], zero);
 
     std::vector<std::complex<double>> Sigma_stat(wbands[is]*wbands[is], zero);
-    std::vector<std::complex<double>> Hij(wbands[is]*wbands[is], zero);
+    Matrix Hij(wbands[is], wbands[is]);
 
     int ik_count = 0;
     for(int ik=0; ik<nks; ik++)
@@ -495,28 +476,20 @@ namespace DFT_plus_DMFT
       // fit Sigma_stat from tail (NO DC subtraction here)
       sigma.fit_sigma_static_from_tail(lattice_Sigma, freq, wbands[is], n_tail_fit, Sigma_stat);
 
-      // build H = epsilon_k + Sigma_stat
-      Hij.assign(wbands[is]*wbands[is], zero);
+      Hij = Eigen::Map<const Matrix>(Sigma_stat.data(), wbands[is], wbands[is]);
       const auto& epsilon = space.eigen_val()[is][ik];
-      for(int i=0; i<wbands[is]; i++){
-        Hij[i*wbands[is] + i] = Sigma_stat[i*wbands[is] + i] + std::complex<double>(epsilon[i], 0.0);
-        for(int j=0; j<wbands[is]; j++){
-          if(i==j) continue;
-          Hij[i*wbands[is] + j] = Sigma_stat[i*wbands[is] + j];
-        }
-      }
+      for(int i=0; i<wbands[is]; i++)
+        Hij(i,i) += epsilon[i];
 
-      // eigenvalues of Hermitian Hij
-      lapack_int info = LAPACKE_zheev(
-          LAPACK_ROW_MAJOR, 'N', 'U', wbands[is],
-          reinterpret_cast<MKL_Complex16*>(Hij.data()),
-          wbands[is],
-          &this->epsilon_infty[is][ik_count][0]);
-
-      if(info != 0){
+      const Matrix hermitian = Hij.selfadjointView<Eigen::Upper>();
+      const Eigen::SelfAdjointEigenSolver<Matrix> eig(hermitian, Eigen::EigenvaluesOnly);
+      if(eig.info() != Eigen::Success){
         std::cerr << "Failed to compute epsilon_infty from fitted Sigma_stat\n";
         std::exit(EXIT_FAILURE);
       }
+      Eigen::Map<Eigen::VectorXd> eigenvalues(
+          this->epsilon_infty[is][ik_count].data(), wbands[is]);
+      eigenvalues = eig.eigenvalues();
 
       ik_count++;
     }
@@ -573,47 +546,29 @@ double DFT_plus_DMFT::chemical_potential::evaluate_electrons_number_imag_fit(
 
       const auto& epsilon = space.eigen_val()[is][ik];
 
-      std::vector<std::vector<std::complex<double>>> KS_Gw(nomega);
-      std::vector<std::vector<std::complex<double>>> KS_Gw_infty(nomega);
-      for(int iomega=0; iomega<nomega; iomega++){
-        KS_Gw[iomega].resize(wbands[is]*wbands[is]);
-        KS_Gw_infty[iomega].resize(wbands[is]*wbands[is]);
-      }
-
-      int* ipiv = new int[wbands[is]];
+      std::vector<Matrix> KS_Gw(nomega), KS_Gw_infty(nomega);
+      const Matrix Sigma_infty = Eigen::Map<const Matrix>(
+          lattice_Sigma_infty_fit.data(), wbands[is], wbands[is]);
       for(int iomega=0; iomega<nomega; iomega++)
       {
-        for(int i=0; i<wbands[is]; i++)
-        {
-          for(int j=0; j<wbands[is]; j++)
-          {
-            if(i==j){
-              KS_Gw[iomega][i*wbands[is]+j] =
-                  im*freq[iomega] + mu - epsilon[i] - lattice_Sigma[iomega][i*wbands[is]+j];
-
-              KS_Gw_infty[iomega][i*wbands[is]+j] =
-                  im*freq[iomega] + mu - epsilon[i] - lattice_Sigma_infty_fit[i*wbands[is]+j];
-            }else{
-              KS_Gw[iomega][i*wbands[is]+j] =
-                  - lattice_Sigma[iomega][i*wbands[is]+j];
-
-              KS_Gw_infty[iomega][i*wbands[is]+j] =
-                  - lattice_Sigma_infty_fit[i*wbands[is]+j];
-            }
-          }
+        Matrix inverse_G = -Eigen::Map<const Matrix>(
+            lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+        Matrix inverse_G_infty = -Sigma_infty;
+        for(int iband=0; iband<wbands[is]; iband++){
+          const auto z = im*freq[iomega] + mu - epsilon[iband];
+          inverse_G(iband,iband) += z;
+          inverse_G_infty(iband,iband) += z;
         }
-
-        general_complex_matrix_inverse(&KS_Gw[iomega][0], wbands[is], &ipiv[0]);
-        general_complex_matrix_inverse(&KS_Gw_infty[iomega][0], wbands[is], &ipiv[0]);
+        KS_Gw[iomega] = inverse_G.inverse();
+        KS_Gw_infty[iomega] = inverse_G_infty.inverse();
       }
-      delete [] ipiv;
 
       for(int iband=0; iband<wbands[is]; iband++)
       {
         double fik_tmp = 0.0;
         for(int iomega=0; iomega<nomega; iomega++)
-          fik_tmp += 2.0/beta * (KS_Gw[iomega][iband*wbands[is]+iband]
-                               - KS_Gw_infty[iomega][iband*wbands[is]+iband]).real();
+          fik_tmp += 2.0/beta * (KS_Gw[iomega](iband,iband)
+                               - KS_Gw_infty[iomega](iband,iband)).real();
 
         // IMPORTANT: epsilon_infty must be consistent with fitted Sigma_stat!
         fik_tmp += 1.0/(1.0 + std::exp(beta*(this->epsilon_infty[is][ik_count][iband] - mu)));
