@@ -232,11 +232,9 @@ namespace DFT_plus_DMFT
     double sum_tmp=0.0;
     for(int is=0; is<nspin; is++)
     {
-      std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-      for(int iomega=0; iomega<nomega; iomega++)
-        lattice_Sigma[iomega].resize(wbands[is]*wbands[is], zero);
+      std::vector<Matrix> lattice_Sigma;
 
-      std::vector<std::complex<double>> lattice_Sigma_infty(wbands[is]*wbands[is], zero);
+      Matrix lattice_Sigma_infty;
 
       int ik_count = 0;
       for(int ik=0; ik<nks; ik++)
@@ -255,12 +253,10 @@ namespace DFT_plus_DMFT
 
         const auto& epsilon = space.eigen_val()[is][ik];
         std::vector<Matrix> KS_Gw(nomega), KS_Gw_infty(nomega);
-        const Matrix Sigma_infty = Eigen::Map<const Matrix>(
-            lattice_Sigma_infty.data(), wbands[is], wbands[is]);
+        const Matrix& Sigma_infty = lattice_Sigma_infty;
         for(int iomega=0; iomega<nomega; iomega++)
         {
-          Matrix inverse_G = -Eigen::Map<const Matrix>(
-              lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+          Matrix inverse_G = -lattice_Sigma[iomega];
           Matrix inverse_G_infty = -Sigma_infty;
           for(int iband=0; iband<wbands[is]; iband++){
             const auto z = im*freq[iomega] + mu - epsilon[iband];
@@ -455,11 +451,9 @@ namespace DFT_plus_DMFT
   for(int is=0; is<nspin; is++)
   {
     // per-k we need lattice_Sigma(iω) in window
-    std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-    for(int iomega=0; iomega<nomega; iomega++)
-      lattice_Sigma[iomega].assign(wbands[is]*wbands[is], zero);
+    std::vector<Matrix> lattice_Sigma;
 
-    std::vector<std::complex<double>> Sigma_stat(wbands[is]*wbands[is], zero);
+    Matrix Sigma_stat;
     Matrix Hij(wbands[is], wbands[is]);
 
     int ik_count = 0;
@@ -476,7 +470,7 @@ namespace DFT_plus_DMFT
       // fit Sigma_stat from tail (NO DC subtraction here)
       sigma.fit_sigma_static_from_tail(lattice_Sigma, freq, wbands[is], n_tail_fit, Sigma_stat);
 
-      Hij = Eigen::Map<const Matrix>(Sigma_stat.data(), wbands[is], wbands[is]);
+      Hij = Sigma_stat;
       const auto& epsilon = space.eigen_val()[is][ik];
       for(int i=0; i<wbands[is]; i++)
         Hij(i,i) += epsilon[i];
@@ -523,11 +517,9 @@ double DFT_plus_DMFT::chemical_potential::evaluate_electrons_number_imag_fit(
 
   for(int is=0; is<nspin; is++)
   {
-    std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-    for(int iomega=0; iomega<nomega; iomega++)
-      lattice_Sigma[iomega].assign(wbands[is]*wbands[is], zero);
+    std::vector<Matrix> lattice_Sigma;
 
-    std::vector<std::complex<double>> lattice_Sigma_infty_fit(wbands[is]*wbands[is], zero);
+    Matrix lattice_Sigma_infty_fit;
 
     int ik_count = 0;
     for(int ik=0; ik<nks; ik++)
@@ -547,12 +539,10 @@ double DFT_plus_DMFT::chemical_potential::evaluate_electrons_number_imag_fit(
       const auto& epsilon = space.eigen_val()[is][ik];
 
       std::vector<Matrix> KS_Gw(nomega), KS_Gw_infty(nomega);
-      const Matrix Sigma_infty = Eigen::Map<const Matrix>(
-          lattice_Sigma_infty_fit.data(), wbands[is], wbands[is]);
+      const Matrix& Sigma_infty = lattice_Sigma_infty_fit;
       for(int iomega=0; iomega<nomega; iomega++)
       {
-        Matrix inverse_G = -Eigen::Map<const Matrix>(
-            lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+        Matrix inverse_G = -lattice_Sigma[iomega];
         Matrix inverse_G_infty = -Sigma_infty;
         for(int iband=0; iband<wbands[is]; iband++){
           const auto z = im*freq[iomega] + mu - epsilon[iband];

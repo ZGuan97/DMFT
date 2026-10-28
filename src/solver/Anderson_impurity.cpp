@@ -193,9 +193,7 @@ namespace DMFT
     
     //evaluation
     for(int is=0; is<nspin; is++){
-      std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-      for(int iomega=0; iomega<nomega; iomega++)
-        lattice_Sigma[iomega].resize(wbands[is]*wbands[is], zero);
+      std::vector<Matrix> lattice_Sigma;
 
       int ik_count=0;
       for(int ik=0; ik<nks; ik++)
@@ -210,8 +208,7 @@ namespace DMFT
         const std::vector<double>& epsilon = space.eigen_val()[is][ik];    
         for(int iomega=0; iomega<nomega; iomega++)
         {
-          Matrix inverse_G_lat = -Eigen::Map<const Matrix>(
-              lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+          Matrix inverse_G_lat = -lattice_Sigma[iomega];
           for(int iband=0; iband<wbands[is]; iband++)
             inverse_G_lat(iband,iband) += im*freq[iomega] + mu - epsilon[iband];
           const Matrix G_lat = inverse_G_lat.inverse();

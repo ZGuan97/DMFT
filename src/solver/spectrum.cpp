@@ -71,9 +71,7 @@ void spectrum::eva_spectrum(
 
   //===========evaluation===============
   for(int is=0; is<nspin; is++){
-    std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-      for(int iomega=0; iomega<nomega; iomega++)
-        lattice_Sigma[iomega].resize(wbands[is]*wbands[is]);
+    std::vector<Matrix> lattice_Sigma;
 
     for(int ik=0; ik<k_map.size(); ik++)
     {
@@ -88,8 +86,7 @@ void spectrum::eva_spectrum(
       std::vector<Matrix> KS_Gw(nomega);
       for(int iomega=0; iomega<nomega; iomega++)
       {
-        Matrix inverse_KS_Gw = -Eigen::Map<const Matrix>(
-            lattice_Sigma[iomega].data(), wbands[is], wbands[is]);
+        Matrix inverse_KS_Gw = -lattice_Sigma[iomega];
         for(int iband=0; iband<wbands[is]; iband++)
           inverse_KS_Gw(iband,iband) += this->freq[iomega] + mu - epsilon[iband];
         KS_Gw[iomega] = inverse_KS_Gw.inverse();
@@ -232,9 +229,7 @@ void spectrum::eva_spectrum_normalization(
   //===========evaluation===============
   for(int is=0; is<nspin; is++)
   {
-    std::vector<std::vector<std::complex<double>>> lattice_Sigma(nomega);
-    for(int iomega=0; iomega<nomega; iomega++)
-      lattice_Sigma[iomega].resize(wbands[is]*wbands[is], zero);
+    std::vector<Matrix> lattice_Sigma;
 
     for(int ik=0; ik<k_map.size(); ik++)
     {
@@ -267,10 +262,10 @@ void spectrum::eva_spectrum_normalization(
             int iDOS_band2 = corr_DOS_bands[is][iband2];
             if(iband1==iband2)
               inverse_KS_Gw(iDOS_band1,iDOS_band2) = this->freq[iomega] + mu
-                -epsilon[iband1]-lattice_Sigma[iomega][iband1*wbands[is]+iband2];
+                -epsilon[iband1]-lattice_Sigma[iomega](iband1,iband2);
             else
               inverse_KS_Gw(iDOS_band1,iDOS_band2) =
-                -lattice_Sigma[iomega][iband1*wbands[is]+iband2];
+                -lattice_Sigma[iomega](iband1,iband2);
           }
         }
         const Matrix KS_Gw = inverse_KS_Gw.inverse();
