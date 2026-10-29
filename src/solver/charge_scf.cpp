@@ -181,7 +181,7 @@ namespace DFT_plus_DMFT
     // DFT_output::overlap_matrix ovlp(this->flag_DFT_solver, "dft/outputs_to_DMFT/overlap_matrix");
     // const int n_basis = ovlp.ovlp_aims.nbasis();
     // std::vector<std::complex<double>> mat_tmp(n_basis*n_basis);
-    std::vector<std::vector<std::complex<double>>> eigenvector;
+    std::vector<Matrix> eigenvector;
 
     if(this->dens_mat_out.empty()){
       this->dens_mat_out.resize(task_nks);
@@ -265,7 +265,7 @@ namespace DFT_plus_DMFT
       }
     }
 
-    std::vector<std::vector<std::complex<double>>> eigenvector;
+    std::vector<Matrix> eigenvector;
     for(int ik=0; ik<task_nks; ik++){
       this->eva_DFT_k_densmat(
           this->flag_DFT_solver, ik, 
@@ -305,8 +305,7 @@ namespace DFT_plus_DMFT
         const int ik,
         const int i_k_point,
         DFT_plus_DMFT::Hilbert_space& space,
-        std::vector<std::vector<
-        std::complex<double>>>& eigenvector,
+        std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
         std::vector<std::vector<
         std::complex<double>>>& dense_cmplx )
   {
@@ -330,10 +329,10 @@ namespace DFT_plus_DMFT
             std::exit(EXIT_FAILURE);
           }
           else if(std::fabs(this->fik_DMFT[ispin][ik][iband]) < 1.0e-6){
-             eigenvector[ispin][ibasis*this->fik_DMFT[ispin][ik].size()+iband] *= 0.0;
+             eigenvector[ispin](ibasis, iband) *= 0.0;
           }
           else{
-            eigenvector[ispin][ibasis*this->fik_DMFT[ispin][ik].size()+iband] *= std::sqrt(this->fik_DMFT[ispin][ik][iband]);
+            eigenvector[ispin](ibasis, iband) *= std::sqrt(this->fik_DMFT[ispin][ik][iband]);
           }
         }
   
@@ -351,7 +350,7 @@ namespace DFT_plus_DMFT
     
       cblas_zherk(CblasRowMajor, CblasUpper, CblasNoTrans, 
                   nbasis, this->fik_DMFT[ispin][ik].size(), 
-                  1.0, &eigenvector[ispin][0], this->fik_DMFT[ispin][ik].size(), 
+                  1.0, eigenvector[ispin].data(), this->fik_DMFT[ispin][ik].size(),
                   0.0, &dense_cmplx[ispin][0], nbasis );
 
       for(int ibasis1=0; ibasis1<nbasis; ibasis1++)
@@ -368,8 +367,7 @@ namespace DFT_plus_DMFT
         const int i_k_point,
         const std::vector<std::vector<
         std::vector<double>>>& fik,
-        std::vector<std::vector<
-        std::complex<double>>>& eigenvector,
+        std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
         std::vector<std::vector<
         std::complex<double>>>& dense_cmplx )
   {
@@ -394,10 +392,10 @@ namespace DFT_plus_DMFT
             std::exit(EXIT_FAILURE);
           }
           else if(std::fabs(fik[ispin][ik][iband]) < 1.0e-6){
-             eigenvector[ispin][ibasis*nbands+iband] *= 0.0;
+             eigenvector[ispin](ibasis, iband) *= 0.0;
           }
           else{
-            eigenvector[ispin][ibasis*nbands+iband] *= std::sqrt(fik[ispin][ik][iband]);
+            eigenvector[ispin](ibasis, iband) *= std::sqrt(fik[ispin][ik][iband]);
           }
         }
   
@@ -415,7 +413,7 @@ namespace DFT_plus_DMFT
     
       cblas_zherk(CblasRowMajor, CblasUpper, CblasNoTrans, 
                   nbasis, nbands, 
-                  1.0, &eigenvector[ispin][0], nbands, 
+                  1.0, eigenvector[ispin].data(), nbands,
                   0.0, &dense_cmplx[ispin][0], nbasis );
 
       for(int ibasis1=0; ibasis1<nbasis; ibasis1++)

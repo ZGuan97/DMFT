@@ -169,8 +169,7 @@ namespace DFT_plus_DMFT
         {
           this->projector_mat[ik][iatom][is] = Matrix::Zero(wbands[is], m_tot);
           this->TB_Hk[ik][iatom][is].assign(m_tot, zero);
-          this->unitary_trans[ik][iatom][is].assign(
-              static_cast<std::size_t>(m_tot)*m_tot, zero);
+          this->unitary_trans[ik][iatom][is] = Matrix::Zero(m_tot, m_tot);
         }
       }
     }
@@ -192,7 +191,7 @@ namespace DFT_plus_DMFT
     double cwf_orth_max_local = 0.0;
     double cwf_hermitian_max_local = 0.0;
 
-    std::vector<std::vector<std::complex<double>>> eigenvec;
+    std::vector<Matrix> eigenvec;
     std::ofstream window_report("window_overlap_rank" + std::to_string(myid) + ".dat");
     if(!window_report)
       projector_abort("cannot open window overlap diagnostics", -1, -1, 0);
@@ -266,26 +265,23 @@ namespace DFT_plus_DMFT
 
       this->n_basis=wfc.basis_n();
       
-      const std::vector<std::complex<double>>& ovlp_mat = ovlp.overlap();
+      const Matrix& overlap_columns = ovlp.overlap();
 
-      std::vector<std::complex<double>>& ovlp_localorb = ovlp.overlap_localorb();
+      const Matrix& local_overlap = ovlp.overlap_localorb();
 
       if(this->n_basis <= 0 ||
          eigenvec.size() != static_cast<std::size_t>(nspin) ||
-         ovlp_mat.size() != static_cast<std::size_t>(this->n_basis)*norb ||
-         ovlp_localorb.size() != static_cast<std::size_t>(norb)*norb)
+         overlap_columns.rows() != this->n_basis || overlap_columns.cols() != norb ||
+         local_overlap.rows() != norb || local_overlap.cols() != norb)
         projector_abort("invalid projector matrix dimensions", i_k_point, -1, 0);
 
-      const Eigen::Map<const Matrix> overlap_columns(ovlp_mat.data(), this->n_basis, norb);
-      Eigen::Map<Matrix> local_overlap(ovlp_localorb.data(), norb, norb);
       hermitian_sqrt_inverse(
           local_overlap, Lowdin,
           i_k_point, -1, "local overlap matrix");
 
       for(int is=0; is<nspin; is++)
       {
-        if(eigenvec[is].size() !=
-           static_cast<std::size_t>(this->n_basis)*wbands[is])
+        if(eigenvec[is].rows() != this->n_basis || eigenvec[is].cols() != wbands[is])
           projector_abort("invalid KS-eigenvector dimensions", i_k_point, is, 0);
 
         // void cblas_zgemm (const CBLAS_LAYOUT Layout, const CBLAS_TRANSPOSE transa, const
@@ -330,7 +326,7 @@ namespace DFT_plus_DMFT
         ofs.close(); 
         */
 
-        const Eigen::Map<const Matrix> C(eigenvec[is].data(), this->n_basis, wbands[is]);
+        const Matrix& C = eigenvec[is];
         proj_mat_tmp = C.adjoint() * overlap_columns;
         mat_tmp = proj_mat_tmp * Lowdin;
 
@@ -503,7 +499,7 @@ namespace DFT_plus_DMFT
           for(int m=0; m<m_tot; m++)
             P.col(m) = proj_mat_tmp.col(orb_index[iatom][m]);
 
-          Eigen::Map<Matrix> H(this->unitary_trans[ik][iatom][is].data(), m_tot, m_tot);
+          Matrix& H = this->unitary_trans[ik][iatom][is];
           const Eigen::Map<const Eigen::VectorXd> energies(
               epsilon[is][i_k_point].data(), wbands[is]);
           const Matrix weighted_P = energies.asDiagonal() * P;
@@ -668,9 +664,7 @@ namespace DFT_plus_DMFT
       {
         for(int is=0; is<nspin; is++)
         {
-          auto& unitary_trans_isk = this->unitary_trans[ik][iatom][is];
-
-          Eigen::Map<Matrix> rotation(unitary_trans_isk.data(), m_tot, m_tot);
+          Matrix& rotation = this->unitary_trans[ik][iatom][is];
           Eigen::SelfAdjointEigenSolver<Matrix> solver;
           solver.compute(rotation.selfadjointView<Eigen::Upper>());
           if(solver.info() != Eigen::Success)

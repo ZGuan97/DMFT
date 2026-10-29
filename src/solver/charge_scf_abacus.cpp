@@ -155,9 +155,9 @@ bool Charge_SCF_abacus::update(solver& task, int charge_step)
         int ik=k_indices[j];
         auto DM_window=density_matrix::density_matrix_window(task.space.eigen_val()[0][ik],Sigma_k[j],beta,mu);
         DFT_output::KS_eigenvectors wfc;
-        std::vector<std::vector<std::complex<double>>> C;
+        std::vector<Matrix> C;
         wfc.read_eigenvec("dft/outputs_to_DMFT/KS_eigenvector/",ik,C);
-        const Eigen::Map<const Matrix> Cm(C[0].data(),wfc.basis_n(),band.nband());
+        const Matrix& Cm=C[0];
         Matrix DMK=density_matrix::density_matrix_NAO(Cm,band.enk()[0][ik],window,DM_window,beta,mu);
         Matrix S=Matrix::Zero(wfc.basis_n(),wfc.basis_n());
         for(int ir=0;ir<int(R4ovlp.size());ir++){

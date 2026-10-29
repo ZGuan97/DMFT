@@ -57,8 +57,8 @@ namespace DFT_plus_DMFT
     //projector_mat[ik][iatom][is]: nbands x m_tot
     std::vector<std::vector<std::vector<Matrix>>> projector_mat;
   
-    //unitary_trans[ik][iatom][nspin][m_tot*m_tot];
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>> unitary_trans;
+    //unitary_trans[ik][iatom][is]: m_tot x m_tot
+    std::vector<std::vector<std::vector<Matrix>>> unitary_trans;
     //Tight binding Haimiltonian:TB_Hk[ik][iatom][nspin][m_tot];
     std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>> TB_Hk;
     

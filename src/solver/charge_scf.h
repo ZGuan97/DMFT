@@ -68,8 +68,7 @@ namespace DFT_plus_DMFT
         const int ik,
         const int i_k_point,
         DFT_plus_DMFT::Hilbert_space& space,
-        std::vector<std::vector<
-        std::complex<double>>>& eigenvector,
+        std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
         std::vector<std::vector<
         std::complex<double>>>& dense_cmplx );
 
@@ -79,8 +78,7 @@ namespace DFT_plus_DMFT
         const int i_k_point,
         const std::vector<std::vector<
         std::vector<double>>>& fik,
-        std::vector<std::vector<
-        std::complex<double>>>& eigenvector,
+        std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
         std::vector<std::vector<
         std::complex<double>>>& dense_cmplx );
 
