@@ -444,7 +444,7 @@ namespace DFT_plus_DMFT
     for(int is=0; is<nspin; is++){
       this->epsilon_infty[is].resize(task_nks);
       for(int ikc=0; ikc<task_nks; ikc++)
-        this->epsilon_infty[is][ikc].resize(wbands[is], 0.0);
+        this->epsilon_infty[is][ikc] = Eigen::VectorXd::Zero(wbands[is]);
     }
   }
 
@@ -481,9 +481,7 @@ namespace DFT_plus_DMFT
         std::cerr << "Failed to compute epsilon_infty from fitted Sigma_stat\n";
         std::exit(EXIT_FAILURE);
       }
-      Eigen::Map<Eigen::VectorXd> eigenvalues(
-          this->epsilon_infty[is][ik_count].data(), wbands[is]);
-      eigenvalues = eig.eigenvalues();
+      this->epsilon_infty[is][ik_count] = eig.eigenvalues();
 
       ik_count++;
     }
