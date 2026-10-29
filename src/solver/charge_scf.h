@@ -9,6 +9,7 @@
 #include "projector.h"
 #include "Hilbert_space.h"
 #include "chemical_potential.h"
+#include "../matrix_types.h"
 
 #include <vector>
 #include <complex>
@@ -69,8 +70,7 @@ namespace DFT_plus_DMFT
         const int i_k_point,
         DFT_plus_DMFT::Hilbert_space& space,
         std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
-        std::vector<std::vector<
-        std::complex<double>>>& dense_cmplx );
+        std::vector<Matrix>& dense_cmplx );
 
     void eva_DFT_k_densmat(
         const int dft_solver,
@@ -79,8 +79,7 @@ namespace DFT_plus_DMFT
         const std::vector<std::vector<
         std::vector<double>>>& fik,
         std::vector<DFT_plus_DMFT::Matrix>& eigenvector,
-        std::vector<std::vector<
-        std::complex<double>>>& dense_cmplx );
+        std::vector<Matrix>& dense_cmplx );
 
     void read_charge_density(
       const bool initial_charge,
@@ -111,15 +110,15 @@ namespace DFT_plus_DMFT
     int nspin;
     int n_basis;
 
-    //Opt_DM_mat[istep][ik][ispin][nbasis*nbasis]
-    std::deque<std::vector<std::vector<std::vector<std::complex<double>>>>> Opt_DM_mat;
+    //Opt_DM_mat[istep][ik][ispin]: nbasis x nbasis
+    std::deque<std::vector<std::vector<Matrix>>> Opt_DM_mat;
 
-    //Res_DM_mat[istep][ik][ispin][nbasis*nbasis]
-    std::deque<std::vector<std::vector<std::vector<std::complex<double>>>>> Res_DM_mat;
+    //Res_DM_mat[istep][ik][ispin]: nbasis x nbasis
+    std::deque<std::vector<std::vector<Matrix>>> Res_DM_mat;
 
     std::vector<std::vector<std::vector<double>>> fik_DMFT;                     //fik_DMFT[is][ik][iband]
 
-    std::vector<std::vector<std::vector<std::complex<double>>>> dens_mat_out;   //dens_mat_ouy[ik][ispin][nbasis*nbasis]
+    std::vector<std::vector<Matrix>> dens_mat_out;   //dens_mat_out[ik][ispin]: nbasis x nbasis
 
     [[noreturn]] void missing_charge_backend(const char* caller) const;
 

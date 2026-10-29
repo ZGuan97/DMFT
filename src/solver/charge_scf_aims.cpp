@@ -20,16 +20,16 @@
 #include <stdio.h>
 
 #include <elsi.h>
+#include <mpi.h>
 
 namespace DFT_plus_DMFT
 {
   void Charge_SCF_aims::output_charge_density_matrix(
         const int nks, 
-        std::vector<std::vector<std::vector<
-        std::complex<double>>>>& dens_mat_cmplx)
+        std::vector<std::vector<Matrix>>& dens_mat_cmplx)
   {
     debug::codestamp("Charge_SCF_aims::output_charge_density");
-    const int nbasis = (int)std::sqrt(dens_mat_cmplx[0][0].size());
+    const int nbasis = dens_mat_cmplx[0][0].rows();
 
     std::vector<int> k_map;
     int task_nks=0;
@@ -42,7 +42,7 @@ namespace DFT_plus_DMFT
     elsi_rw_handle rwh;
     c_elsi_init_rw(&rwh,1,0,nbasis,0.0);
 
-    std::vector<std::complex<double>> dense_mat_tmp(nbasis*nbasis);
+    Matrix dense_mat_tmp;
 
     for(int ik=0; ik<task_nks; ik++){
       for(int ispin=0; ispin<dens_mat_cmplx[0].size(); ispin++){
@@ -67,10 +67,7 @@ namespace DFT_plus_DMFT
         // system(rmfl.str().c_str());
 
         //Fortran order : column major
-        for(int ibasis1=0; ibasis1<nbasis; ibasis1++)
-          for(int ibasis2=0; ibasis2<nbasis; ibasis2++)
-            dense_mat_tmp[ibasis1*nbasis + ibasis2] = 
-              std::conj(dens_mat_cmplx[ik][ispin][ibasis1*nbasis + ibasis2]);
+        dense_mat_tmp = dens_mat_cmplx[ik][ispin].conjugate();
 
         c_elsi_write_mat_complex(rwh, &file[0], reinterpret_cast<double _Complex*>(dense_mat_tmp.data()));
         
@@ -186,11 +183,10 @@ namespace DFT_plus_DMFT
 
   void Charge_SCF_aims::read_charge_density_matrix(
         const int nks, 
-        std::vector<std::vector<std::vector<
-        std::complex<double>>>>& dens_mat_cmplx)
+        std::vector<std::vector<Matrix>>& dens_mat_cmplx)
   {
     debug::codestamp("Charge_SCF_aims::read_charge_density_matrix");
-    const int nbasis = (int)std::sqrt(dens_mat_cmplx[0][0].size());
+    const int nbasis = dens_mat_cmplx[0][0].rows();
 
     std::vector<int> k_map;
     int task_nks=0;
@@ -221,10 +217,7 @@ namespace DFT_plus_DMFT
         c_elsi_read_mat_complex(rwh, &file[0], reinterpret_cast<double _Complex*>(dens_mat_cmplx[ik][ispin].data()));
 
         //C++ order : row major
-        for(int ibasis1=0; ibasis1<nbasis; ibasis1++)
-          for(int ibasis2=0; ibasis2<nbasis; ibasis2++)
-            dens_mat_cmplx[ik][ispin][ibasis1*nbasis + ibasis2] = 
-              std::conj(dens_mat_cmplx[ik][ispin][ibasis1*nbasis + ibasis2]);
+        dens_mat_cmplx[ik][ispin] = dens_mat_cmplx[ik][ispin].conjugate();
       }
     }
 
