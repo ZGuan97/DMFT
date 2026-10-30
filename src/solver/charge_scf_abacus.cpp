@@ -108,7 +108,7 @@ bool Charge_SCF_abacus::update(solver& task, int charge_step)
     for(int a=0;a<natom;a++){
         const int norb=atom.iatom_norb()[a];
         for(int iw=0;iw<n_omega;iw++)
-            Sigma_local[a][iw]=Eigen::Map<const Matrix>(local[atom.equ_atom(a)][0][iw].data(),norb,norb);
+            Sigma_local[a][iw]=local[atom.equ_atom(a)][0][iw];
     }
     std::vector<int> k_indices;
     std::vector<std::vector<Matrix>> Sigma_k;

@@ -39,10 +39,10 @@ namespace DMFT
     const std::vector<int>& norb_sub = atom.iatom_norb();
     const std::complex<double> zero(0.0,0.0);
     
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
             Sigma_new = this->sigma_new(axis_flag);
     
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
             Sigma_save = this->sigma_save(axis_flag);
 
     Sigma_new.resize(atom.inequ_atoms());
@@ -66,10 +66,10 @@ namespace DMFT
 
         for(int i_omega=0; i_omega<n_omega; i_omega++)
         {
-          Sigma_new[ineq][is][i_omega].resize(m_tot*m_tot, zero);
+          Sigma_new[ineq][is][i_omega].setZero(m_tot, m_tot);
 
           for(int m_index=0; m_index<m_tot*m_tot; m_index++)
-              Sigma_new[ineq][is][i_omega][m_index] = Vdca[is][m_index];
+              Sigma_new[ineq][is][i_omega].data()[m_index] = Vdca[is][m_index];
         }//is
       }//i_omega
     }//iatom
@@ -111,7 +111,7 @@ namespace DMFT
             spin = (ispin+flip)%2;
           }
           const Matrix& P = projector[a][ispin];
-          const Eigen::Map<const Matrix> local(local_sigma[ineq][spin][iw].data(), norb, norb);
+          const Matrix& local = local_sigma[ineq][spin][iw];
           // Preserve the diagonal-local-self-energy approximation.
           const Matrix weighted_P = P * local.diagonal().asDiagonal();
           Sigma[iw] += weighted_P * P.adjoint();
@@ -149,7 +149,7 @@ namespace DMFT
           spin = (ispin+flip)%2;
         }
         const Matrix& P = projector[a][ispin];
-        const Eigen::Map<const Matrix> local(local_sigma[ineq][spin][iw].data(), norb, norb);
+        const Matrix& local = local_sigma[ineq][spin][iw];
         Eigen::VectorXcd diagonal = local.diagonal();
         // Legacy infty estimate discards Im Sigma only on representative atoms.
         if(a == iatom) diagonal = diagonal.real().cast<std::complex<double>>();
@@ -246,10 +246,10 @@ namespace DMFT
   {
     debug::codestamp("self_energy::subtract_double_counting");
 
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
             sigma_correlatd = this->correlated_sigma(axis_flag);
     
-    const std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    const std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
             sigma_new = this->sigma_new(axis_flag);
 
     //Allocation
@@ -280,7 +280,7 @@ namespace DMFT
         {
           std::complex<double> tmp=this->dc.Vdc().at(ineq).at(ispin).at(m_index);
           for(int iomega=0; iomega<omega_number; iomega++){
-            sigma_correlatd[ineq][ispin][iomega][m_index] = sigma_new[ineq][ispin][iomega][m_index] - tmp;
+            sigma_correlatd[ineq][ispin][iomega].data()[m_index] = sigma_new[ineq][ispin][iomega].data()[m_index] - tmp;
           }
         }//m_index
       }//ispin
@@ -305,7 +305,7 @@ namespace DMFT
     }
   }
 
-  std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+  std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
               self_energy::sigma_new(const int axis_flag)
   {
     switch(axis_flag)
@@ -322,7 +322,7 @@ namespace DMFT
     }
   }
 
-  std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+  std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
             self_energy::sigma_save(const int axis_flag)
   {
     switch(axis_flag)
@@ -339,7 +339,7 @@ namespace DMFT
     }
   }
 
-  std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+  std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
               self_energy::correlated_sigma(const int axis_flag)
   {
     switch(axis_flag)

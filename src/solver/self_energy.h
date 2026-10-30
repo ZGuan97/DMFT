@@ -1,11 +1,11 @@
 #pragma once
+#include "../matrix_types.h"
 
 #include "../para/correlated_atoms.h"
 #include "self_energy_real_aixs.h"
 #include "self_energy_imaginary_aixs.h"
 #include "double_counting.h"
 #include "projector.h"
-#include "../matrix_types.h"
 
 #include <vector>
 
@@ -66,13 +66,13 @@ namespace DMFT
     // =================================================
     int nomega(const int axis_flag); //0: imaginary axis, 1:real axis
 
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
               sigma_new(const int axis_flag); //0: imaginary axis, 1:real axis
 
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
               sigma_save(const int axis_flag); //0: imaginary axis, 1:real axis
 
-    std::vector<std::vector<std::vector<std::vector<std::complex<double>>>>>&
+    std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>&
               correlated_sigma(const int axis_flag); //0: imaginary axis, 1:real axis
 
   };
