@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../para/parameters.h"
+#include "../para/crpa.h"
 #include "projector.h"
 #include "chemical_potential.h"
 #include "Hilbert_space.h"
@@ -19,6 +20,7 @@ namespace DFT_plus_DMFT
     ~solver(){};
 
     param pars;
+    DMFT::crpa::corr_space crpa_space;
     projector proj;
     chemical_potential Mu;
     Hilbert_space space;

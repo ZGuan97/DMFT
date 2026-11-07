@@ -24,7 +24,7 @@
 ### crpa
 - **Type**: Boolean (`true` or `false`, case-insensitive).
 - **Default**: `false`.
-- **Description**: Store the cRPA interface switch. Currently only input parsing, parameter access and output are implemented; setting `crpa true` does not yet read cRPA files or change the calculation.
+- **Description**: Read and store `crpa/space.json` during initialization when enabled. Missing or invalid space files stop the run. Projector and interaction import, and replacing the existing DMFT orbital construction, are not yet implemented.
 
 [back to top](#list-of-all-available-parameters)
 

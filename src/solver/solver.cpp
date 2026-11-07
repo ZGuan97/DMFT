@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdexcept>
 
 extern "C" void aims_(int* mpi_comm, int* unit, bool* mpi_switch);
 
@@ -29,6 +30,18 @@ namespace DFT_plus_DMFT
     GLV::ofs_running << "Number of processes of the job: " << mpi_ntasks() << "\n" << std::endl;
 
     this->pars.in.read();
+
+    if(*(const bool*)this->pars.in.parameter("crpa"))
+    {
+      this->crpa_space.read();
+      if(mpi_rank()==0)
+        GLV::ofs_running << "Read " << DMFT::crpa::space_file << ": "
+          << this->crpa_space.correlated_atoms.size() << " correlated atoms, "
+          << this->crpa_space.nimpurities << " impurities, "
+          << this->crpa_space.norb << " orbitals.\n"
+          << "cRPA space is stored only; projector and interaction import are not yet implemented."
+          << std::endl;
+    }
 
     this->pars.atom.read(this->pars.in);
 

@@ -27,6 +27,49 @@ Two kinds of input files, i.e., DFT and DMFT files, are required if one wants to
     All available parameters are explictly explained [here](list_of_parameters.md). Note that all parameters and their values are case-insensitive. The symbol `#` uses for annotating.
 
 
+### cRPA interface files
+
+The cRPA interface uses the following fixed paths relative to the DMFT calculation directory:
+
+| File | Purpose |
+| --- | --- |
+| `crpa/space.json` | Correlated-space definition and orbital/impurity mappings |
+| `crpa/projectors.dat` | Bloch-to-local projector matrices |
+| `crpa/Uijkl_impurityN.dat` | Interaction tensor for inequivalent impurity `N`, numbered from zero |
+
+These paths are defined in `src/para/crpa.h` and `src/para/crpa.cpp`.
+The reader uses the independently bundled nlohmann/json library; it does not depend
+on the ComCTQMC JSON implementation.
+When `crpa true` is set in `DMFT.in`, `space.json` is read and stored during initialization.
+Projector and interaction import, and using the external space in place of the existing
+DMFT orbital construction, are not yet implemented.
+
+The JSON structure is:
+
+```json
+{
+  "correlated_atoms": [
+    {
+      "atom_id": 0,
+      "impurity_id": 0,
+      "orbitals": ["dxy", "dyz", "dz2", "dxz", "dx2-y2"]
+    }
+  ]
+}
+```
+
+`atom_id` is the zero-based atom index in the DFT structure, not the index among
+correlated atoms. Atom IDs must be distinct and nonnegative; checking their correspondence
+to the DFT structure is deferred until the space is used in the calculation.
+`impurity_id` values must be consecutive starting at zero; atoms sharing an impurity
+must have identical ordered orbital labels. Labels are stored as supplied, without
+interpreting them as atomic basis indices or applying rotations.
+The order of `correlated_atoms` defines the correlated-atom indices. Each `orbitals`
+array defines the local orbital order; concatenating these arrays defines the global
+projector column order. Atom, impurity and orbital counts are derived from the contents.
+The reader directly extracts these fields and derives the counts; it does not perform
+additional index-range, duplicate-atom or equivalent-orbital consistency checks.
+
 ## Output files
 After the DFT+DMFT calculations finished, there will be following output files
 

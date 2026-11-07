@@ -396,7 +396,7 @@ LINKER = $MPI_FC -nofor-main -cxxlib
 OPTIONS = -g -O3 -std=c++14
 LINK_OPTIONS = -g -O3
 MACRO = $MACRO_ABACUS
-INCLUDES = -I../thirdparty/eigen-3.4.0 -I\${MKLROOT}/include
+INCLUDES = -I../thirdparty/eigen-3.4.0 -I../thirdparty/nlohmann-json-3.11.2/include -I\${MKLROOT}/include
 LIB_MKL = -L\${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lifport -lifcoremt
 LIB_PACS = -L${root_dir}/build/impurities/PACS -l:libpacs.a
 LIB_iQIST = -L${root_dir}/build/impurities/iQIST/ct_hyb1 -l:libnarcissus.a \\
@@ -416,6 +416,7 @@ VPATH=../src \\
 #============================
 OBJS=main.o \\
 parameters.o \\
+crpa.o \\
 mpi_environment.o \\
 global_variables.o \\
 utilities.o \\
@@ -480,7 +481,7 @@ LINKER = $MPI_FC -nofor-main -cxxlib
 OPTIONS = -g -O3 -std=c++14
 LINK_OPTIONS = -g -O3
 MACRO = -D__FHIaims $MACRO_ABACUS
-INCLUDES = -I../thirdparty/eigen-3.4.0 -I\${MKLROOT}/include -I${FHIaims_lib_path}/include
+INCLUDES = -I../thirdparty/eigen-3.4.0 -I../thirdparty/nlohmann-json-3.11.2/include -I\${MKLROOT}/include -I${FHIaims_lib_path}/include
 
 LIB_MKL = -L\${MKLROOT}/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lmkl_blacs_intelmpi_lp64 \\
 -lmkl_scalapack_lp64 -lifport -lifcoremt
@@ -505,6 +506,7 @@ VPATH=../src \\
 #============================
 OBJS=main.o \\
 parameters.o \\
+crpa.o \\
 mpi_environment.o \\
 global_variables.o \\
 utilities.o \\
