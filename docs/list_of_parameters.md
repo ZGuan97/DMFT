@@ -21,6 +21,13 @@
 
 [back to top](#list-of-all-available-parameters)
 
+### crpa
+- **Type**: Boolean (`true` or `false`, case-insensitive).
+- **Default**: `false`.
+- **Description**: Store the cRPA interface switch. Currently only input parsing, parameter access and output are implemented; setting `crpa true` does not yet read cRPA files or change the calculation.
+
+[back to top](#list-of-all-available-parameters)
+
 ### temperature
 - **Type**: real
 - **Description**: Specify the temperatue in the unit of Kelvin.

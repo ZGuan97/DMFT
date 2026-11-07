@@ -113,6 +113,26 @@ namespace DMFT
     if(this->flag_DFT_solver==1) GLV::ofs_running << "aims" << std::endl;
     else if(this->flag_DFT_solver==2) GLV::ofs_running << "abacus" << std::endl;
 
+    //crpa
+    this->flag_crpa = false;
+    try {
+      std::vector<std::string> str_val;
+      this->read_parameter("crpa", str_val);
+      const std::string value = this->strtolower(str_val[0]);
+      if(value=="true") this->flag_crpa = true;
+      else if(value!="false") {
+        std::cerr << "Unsupported value for crpa: " << str_val[0]
+                  << "; expected true or false" << std::endl;
+        std::exit(EXIT_FAILURE);
+      }
+    }
+    catch(const bool not_given) { (void)not_given; }
+    catch(const std::string messg) {
+      std::cerr << messg << std::endl;
+      std::exit(EXIT_FAILURE);
+    }
+    GLV::ofs_running << "crpa  " << (this->flag_crpa ? "true" : "false") << std::endl;
+
     //temperature
     try {
       std::vector<std::string> str_val;
@@ -878,6 +898,7 @@ namespace DMFT
           std::strcmp("magnetism", key_str_lower.c_str())==0 ||
           std::strcmp("impurity_solver", key_str_lower.c_str())==0 ||
           std::strcmp("interaction_type", key_str_lower.c_str())==0 ||
+          key_str_lower=="crpa" ||
           key_str_lower=="comctqmc_nproc" ||
           key_str_lower=="warmup" ||
           key_str_lower=="comctqmc_exe" ||
@@ -966,6 +987,7 @@ namespace DMFT
     else if(std::strcmp("n_omega", word.c_str())==0) return &n_omega;
     else if(std::strcmp("impurity_solver", word.c_str())==0) return &flag_impurity_solver;
     else if(std::strcmp("interaction_type", word.c_str())==0) return &flag_interaction_type;
+    else if(word=="crpa") return &flag_crpa;
     else if(word=="comctqmc_nproc") return &comctqmc_nproc;
     else if(word=="warmup") return &warmup;
     else if(word=="comctqmc_exe") return &comctqmc_exe;
@@ -1030,6 +1052,7 @@ namespace DMFT
     ofs << "magnetism" << std::setw(5) << this->flag_magnetism << '\n';
     ofs << "impurity_solver" << std::setw(5) << this->flag_impurity_solver << '\n';
     ofs << "interaction_type" << std::setw(5) << this->flag_interaction_type << '\n';
+    ofs << "crpa  " << (this->flag_crpa ? "true" : "false") << '\n';
     ofs << "n_tau" << std::setw(5) << this->n_tau << '\n';
     ofs << "n_omega" << std::setw(5) << this->n_omega << '\n';
     ofs << "double_counting" << std::setw(5) << this->flag_double_counting << std::endl;
