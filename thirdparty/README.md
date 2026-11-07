@@ -1,5 +1,17 @@
 # Third-party software
 
+## nlohmann/json
+
+- Pinned version: 3.11.2 (MIT license, bundled as `LICENSE.MIT`).
+- Upstream: https://github.com/nlohmann/json/tree/v3.11.2
+- Headers copied unchanged from the local conda package
+  `nlohmann_json-3.11.2-h313beb8_0` on 2026-11-07.
+- Location: `nlohmann-json-3.11.2/include/nlohmann/`.
+- Header-only, compatible with C++11. Add
+  `thirdparty/nlohmann-json-3.11.2/include` to the include path; no library link
+  or runtime conda environment is required.
+- Used by the cRPA interface independently of ComCTQMC.
+
 ## ComCTQMC
 
 - Distribution source: [doi:10.17632/nvcc595t2b.1](https://doi.org/10.17632/nvcc595t2b.1).
