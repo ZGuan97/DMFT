@@ -34,12 +34,16 @@ namespace DFT_plus_DMFT
     if(*(const bool*)this->pars.in.parameter("crpa"))
     {
       this->crpa_space.read();
+      this->crpa_projectors.read();
       if(mpi_rank()==0)
         GLV::ofs_running << "Read " << DMFT::crpa::space_file << ": "
           << this->crpa_space.correlated_atoms.size() << " correlated atoms, "
           << this->crpa_space.nimpurities << " impurities, "
           << this->crpa_space.norb << " orbitals.\n"
-          << "cRPA space is stored only; projector and interaction import are not yet implemented."
+          << "Read " << DMFT::crpa::projector_file << ": "
+          << this->crpa_projectors.nspin << " spin channels, "
+          << this->crpa_projectors.nk << " k points.\n"
+          << "cRPA data are stored only; external projection and interaction use are not yet implemented."
           << std::endl;
     }
 

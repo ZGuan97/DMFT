@@ -40,9 +40,9 @@ The cRPA interface uses the following fixed paths relative to the DMFT calculati
 These paths are defined in `src/para/crpa.h` and `src/para/crpa.cpp`.
 The reader uses the independently bundled nlohmann/json library; it does not depend
 on the ComCTQMC JSON implementation.
-When `crpa true` is set in `DMFT.in`, `space.json` is read and stored during initialization.
-Projector and interaction import, and using the external space in place of the existing
-DMFT orbital construction, are not yet implemented.
+When `crpa true` is set in `DMFT.in`, `space.json` and `projectors.dat` are read and
+stored during initialization. Interaction import, and using the external space and
+projectors in place of the existing DMFT orbital construction, are not yet implemented.
 
 The JSON structure is:
 
@@ -69,6 +69,33 @@ array defines the local orbital order; concatenating these arrays defines the gl
 projector column order. Atom, impurity and orbital counts are derived from the contents.
 The reader directly extracts these fields and derives the counts; it does not perform
 additional index-range, duplicate-atom or equivalent-orbital consistency checks.
+
+### Projector file format
+
+`crpa/projectors.dat` is whitespace-separated numeric text, without keywords or
+comments. Its layout, in reading order, is:
+
+1. Three integers: `nspin nk norb`. `nspin` is 1 (nonmagnetic) or 2 (collinear
+   up/down); SOC spinors are not supported. `norb` equals the total orbital count
+   from `space.json`.
+2. `nk` rows: `kx ky kz weight`, in the same k-point order as the DFT data.
+   Coordinates are fractional in reciprocal lattice vectors including 2*pi;
+   weights are dimensionless and normalized to sum to one, without a spin factor.
+3. For each spin channel, in order:
+   - One integer `nbands`, then `nbands` zero-based DFT band indices in matrix row order.
+     The same band list applies to every k point in that spin channel.
+   - `nk * nbands * norb` pairs `real imag`, ordered by k point, then band,
+     then global correlated orbital (orbital index varies fastest).
+
+Each pair represents the dimensionless complex matrix element
+`P[n,a](k,spin) = <psi_nk,spin | w_ak,spin>`; no conjugation is applied on input.
+The global orbital order is obtained by concatenating the orbital lists in `space.json`.
+Each matrix uses the project's row-major Eigen `Matrix` type and is accessed as
+`crpa_projectors.P[spin][k](band, orb)`.
+Matrices are expected to satisfy `P^dagger P = I`; the reader neither orthogonalizes
+nor rotates them. It retains the supplied k-point weights and band indices without
+matching them against the DFT data at this stage. The same DFT wavefunctions and
+their phase/band conventions must be used when these projectors are applied.
 
 ## Output files
 After the DFT+DMFT calculations finished, there will be following output files

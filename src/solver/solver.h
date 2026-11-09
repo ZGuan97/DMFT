@@ -21,6 +21,7 @@ namespace DFT_plus_DMFT
 
     param pars;
     DMFT::crpa::corr_space crpa_space;
+    DMFT::crpa::projectors crpa_projectors;
     projector proj;
     chemical_potential Mu;
     Hilbert_space space;

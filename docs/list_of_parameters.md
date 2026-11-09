@@ -24,7 +24,7 @@
 ### crpa
 - **Type**: Boolean (`true` or `false`, case-insensitive).
 - **Default**: `false`.
-- **Description**: Read and store `crpa/space.json` during initialization when enabled. Missing or invalid space files stop the run. Projector and interaction import, and replacing the existing DMFT orbital construction, are not yet implemented.
+- **Description**: Read and store `crpa/space.json` and `crpa/projectors.dat` during initialization when enabled. File reading errors stop the run. Using these data in place of the existing DMFT orbital construction and importing interactions are not yet implemented.
 
 [back to top](#list-of-all-available-parameters)
 
