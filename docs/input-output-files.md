@@ -35,6 +35,7 @@ The cRPA interface uses the following fixed paths relative to the DMFT calculati
 | --- | --- |
 | `crpa/space.json` | Correlated-space definition and orbital/impurity mappings |
 | `crpa/projectors.dat` | Bloch-to-local projector matrices |
+| `crpa/UJ.dat` | Scalar U and J for a single inequivalent impurity, in eV |
 | `crpa/Uijkl_impurityN.dat` | Interaction tensor for inequivalent impurity `N`, numbered from zero |
 
 These paths are defined in `src/para/crpa.h` and `src/para/crpa.cpp`.
@@ -47,7 +48,9 @@ the bands from `projection_window`, or reads the saved window for restart and sp
 Integration weights come from the existing DFT `k_weight.dat`.
 The projector construction settings do not alter the imported matrices.
 The spectral band window uses the existing DOS-window handling.
-Interaction import is not yet implemented; U, J and double counting retain the existing inputs.
+`crpa/UJ.dat` supplies scalar U and J for a single inequivalent impurity. They replace
+the values read from `correlated_atoms.info` for that impurity and its equivalent atoms.
+The existing interaction construction and double counting use these parameters.
 
 The JSON structure is:
 
@@ -104,6 +107,14 @@ diagonal entries through the existing local-level interface. This integration re
 the current solver's diagonal local-level and local-self-energy approximation; it does
 not add a general off-diagonal impurity model. Atomic overlap and eigenvector files
 are not read by the imported-projector path.
+
+### U and J file format
+
+`crpa/UJ.dat` contains one data row with three columns: `impurity_id U J`.
+The impurity index is 0, and U and J are in eV. Blank lines and comments beginning
+with `#` are skipped. DMFT converts the values to Hartree when reading.
+Use `interaction_type density_density` or `interaction_type kanamori` for this scalar
+interface. Tensor conversion and multiple inequivalent impurities are not implemented.
 
 ## Output files
 After the DFT+DMFT calculations finished, there will be following output files

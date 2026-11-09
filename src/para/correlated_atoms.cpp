@@ -133,6 +133,14 @@ namespace DFT_output
     }
   }
 
+  void atoms_info::read_crpa_UJ()
+  {
+    double U = 0.0, J = 0.0;
+    DMFT::crpa::read_UJ(U, J);
+    this->Hubbard_U.assign(this->n_DMFT_atoms, U);
+    this->Hund_J.assign(this->n_DMFT_atoms, J);
+  }
+
   bool atoms_info::read_structure_symmetry()
   {
     debug::codestamp("atoms_info::read_structure_symmetry");

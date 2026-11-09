@@ -1,7 +1,9 @@
 #include "crpa.h"
+#include "../constants.h"
 
 #include <algorithm>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <utility>
 
@@ -13,6 +15,23 @@ namespace DMFT
   {
     const char space_file[] = "crpa/space.json";
     const char projector_file[] = "crpa/projectors.dat";
+    const char UJ_file[] = "crpa/UJ.dat";
+
+    void read_UJ(double& U, double& J)
+    {
+      std::ifstream input(UJ_file);
+      if(!input) throw std::runtime_error(std::string("cannot open ") + UJ_file);
+      std::string line;
+      int impurity = 0;
+      while(std::getline(input, line))
+      {
+        line = line.substr(0, line.find('#'));
+        std::istringstream row(line);
+        if(row >> impurity >> U >> J) break;
+      }
+      U /= GLC::Hartree_to_eV;
+      J /= GLC::Hartree_to_eV;
+    }
 
     std::string interaction_file(int ineq)
     {

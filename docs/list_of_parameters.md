@@ -24,7 +24,7 @@
 ### crpa
 - **Type**: Boolean (`true` or `false`, case-insensitive).
 - **Default**: `false`.
-- **Description**: Use `crpa/space.json` and `crpa/projectors.dat` for the correlated-space mapping and projectors in SCF and spectra, replacing NAO/CWF construction. Band selection uses the existing DMFT window; k-point weights come from DFT. Supports fixed-DFT calculations (`max_charge_step 1`). Interaction import is not yet implemented.
+- **Description**: Read `crpa/space.json`, `crpa/projectors.dat` and `crpa/UJ.dat` for the correlated space, projectors and scalar U/J. Band selection uses the existing DMFT window; k-point weights come from DFT. Supports a single inequivalent impurity in fixed-DFT calculations (`max_charge_step 1`), with `density_density` or `kanamori` interactions.
 
 [back to top](#list-of-all-available-parameters)
 

@@ -11,6 +11,10 @@ namespace DMFT
     // Paths relative to the DMFT calculation directory.
     extern const char space_file[];
     extern const char projector_file[];
+    extern const char UJ_file[];
+
+    // Single inequivalent impurity; file values are eV, returned values Hartree.
+    void read_UJ(double& U, double& J);
 
     // Zero-based inequivalent impurity index.
     std::string interaction_file(int ineq);

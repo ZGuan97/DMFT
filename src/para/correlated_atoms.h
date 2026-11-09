@@ -15,6 +15,7 @@ namespace DFT_output
 
     void read(DMFT::input_info& in);
     void use_crpa_space(const DMFT::crpa::corr_space& space);
+    void read_crpa_UJ();
     bool read_structure_symmetry();
     bool read_local_symmetry(DMFT::input_info& in);
     bool read_correlated_atoms_info();

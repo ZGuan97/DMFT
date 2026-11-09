@@ -36,6 +36,7 @@ namespace DFT_plus_DMFT
     {
       this->crpa_space.read();
       this->pars.atom.use_crpa_space(this->crpa_space);
+      this->pars.atom.read_crpa_UJ();
       if(*(int*)this->pars.in.parameter("max_charge_step") > 1)
         throw std::runtime_error("cRPA projectors require fixed DFT data (max_charge_step 1)");
       GLV::ofs_running << "Using cRPA projectors from " << DMFT::crpa::projector_file << std::endl;
