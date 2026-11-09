@@ -21,6 +21,10 @@ namespace DFT_plus_DMFT
     projector(): n_basis(0) {};
     ~projector(){};
 
+    void use_crpa_projectors(const DMFT::crpa::projectors& external,
+                             DFT_output::atoms_info& atom,
+                             Hilbert_space& space);
+
     void evaluate_projector(
         const int projector_type,
         const int DFT_solver,

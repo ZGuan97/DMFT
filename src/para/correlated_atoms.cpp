@@ -107,6 +107,32 @@ namespace DFT_output
     return;
   }
 
+  void atoms_info::use_crpa_space(const DMFT::crpa::corr_space& space)
+  {
+    // U, J, l, magnetic direction and m labels retain the metadata file order.
+    this->n_DMFT_atoms = space.correlated_atoms.size();
+    this->n_inequivalent_atoms = space.nimpurities;
+    this->n_DMFT_orb = space.norb;
+    this->local_symmetry = 0;
+    this->equivalent_atom.resize(this->n_DMFT_atoms);
+    this->ineq_atom_to_iatom.assign(space.nimpurities, -1);
+    this->sub_norb.resize(this->n_DMFT_atoms);
+    this->DMFT_orb_index.resize(this->n_DMFT_atoms);
+    int offset = 0;
+    for(int iatom=0; iatom<this->n_DMFT_atoms; iatom++)
+    {
+      const auto& atom = space.correlated_atoms[iatom];
+      const int M = atom.orbitals.size();
+      this->equivalent_atom[iatom] = atom.impurity_id;
+      if(this->ineq_atom_to_iatom[atom.impurity_id] == -1)
+        this->ineq_atom_to_iatom[atom.impurity_id] = iatom;
+      this->sub_norb[iatom] = M;
+      this->DMFT_orb_index[iatom].resize(M);
+      for(int m=0; m<M; m++) this->DMFT_orb_index[iatom][m] = offset++;
+      for(int is=0; is<2; is++) this->occ_number_m[iatom][is].assign(M, 0.0);
+    }
+  }
+
   bool atoms_info::read_structure_symmetry()
   {
     debug::codestamp("atoms_info::read_structure_symmetry");

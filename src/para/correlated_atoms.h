@@ -1,5 +1,6 @@
 #pragma once
 #include "input.h" 
+#include "crpa.h"
 
 #include <string>
 #include <vector>
@@ -13,6 +14,7 @@ namespace DFT_output
     ~atoms_info(){;}
 
     void read(DMFT::input_info& in);
+    void use_crpa_space(const DMFT::crpa::corr_space& space);
     bool read_structure_symmetry();
     bool read_local_symmetry(DMFT::input_info& in);
     bool read_correlated_atoms_info();

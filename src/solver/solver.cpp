@@ -30,24 +30,16 @@ namespace DFT_plus_DMFT
     GLV::ofs_running << "Number of processes of the job: " << mpi_ntasks() << "\n" << std::endl;
 
     this->pars.in.read();
+    this->pars.atom.read(this->pars.in);
 
     if(*(const bool*)this->pars.in.parameter("crpa"))
     {
       this->crpa_space.read();
-      this->crpa_projectors.read();
-      if(mpi_rank()==0)
-        GLV::ofs_running << "Read " << DMFT::crpa::space_file << ": "
-          << this->crpa_space.correlated_atoms.size() << " correlated atoms, "
-          << this->crpa_space.nimpurities << " impurities, "
-          << this->crpa_space.norb << " orbitals.\n"
-          << "Read " << DMFT::crpa::projector_file << ": "
-          << this->crpa_projectors.nspin << " spin channels, "
-          << this->crpa_projectors.nk << " k points.\n"
-          << "cRPA data are stored only; external projection and interaction use are not yet implemented."
-          << std::endl;
+      this->pars.atom.use_crpa_space(this->crpa_space);
+      if(*(int*)this->pars.in.parameter("max_charge_step") > 1)
+        throw std::runtime_error("cRPA projectors require fixed DFT data (max_charge_step 1)");
+      GLV::ofs_running << "Using cRPA projectors from " << DMFT::crpa::projector_file << std::endl;
     }
-
-    this->pars.atom.read(this->pars.in);
 
     this->working_init();
 
@@ -67,6 +59,24 @@ namespace DFT_plus_DMFT
     this->unset_ios(GLV::ofs_running);
 
     return;
+  }
+
+  void solver::prepare_projector()
+  {
+    if(*(const bool*)this->pars.in.parameter("crpa"))
+    {
+      this->crpa_projectors.read(space.Wbands(), pars.bands.nk(), crpa_space.norb);
+      this->proj.use_crpa_projectors(this->crpa_projectors, this->pars.atom, this->space);
+    }
+    else
+      this->proj.evaluate_projector(
+          *(int*)pars.in.parameter("projector"),
+          *(int*)pars.in.parameter("DFT_solver"),
+          pars.bands, this->space, this->pars.atom,
+          *(double*)pars.in.parameter("cwf_ep0"),
+          *(double*)pars.in.parameter("cwf_ep1"),
+          *(double*)pars.in.parameter("cwf_t"),
+          *(double*)pars.in.parameter("projection_min_weight") );
   }
 
   void solver::DFT_DMFT_scf()
@@ -134,14 +144,7 @@ namespace DFT_plus_DMFT
       //       this->pars.bands, this->pars.atom, 
       //       this->pars.in, this->space);
 
-      this->proj.evaluate_projector(
-            *(int*)pars.in.parameter("projector"),
-            *(int*)pars.in.parameter("DFT_solver"),
-            pars.bands, this->space, this->pars.atom,
-            *(double*)pars.in.parameter("cwf_ep0"),
-            *(double*)pars.in.parameter("cwf_ep1"),
-            *(double*)pars.in.parameter("cwf_t"),
-            *(double*)pars.in.parameter("projection_min_weight") );
+      this->prepare_projector();
 
       this->imp.evaluate_local_occupation( 
             this->pars.in, this->pars.bands, 
@@ -449,14 +452,7 @@ namespace DFT_plus_DMFT
     //       this->pars.bands, this->pars.atom, 
     //       this->pars.in, this->space);
 
-    this->proj.evaluate_projector(
-          *(int*)pars.in.parameter("projector"),
-          *(int*)pars.in.parameter("DFT_solver"),
-          pars.bands, this->space, this->pars.atom,
-          *(double*)pars.in.parameter("cwf_ep0"),
-          *(double*)pars.in.parameter("cwf_ep1"),
-          *(double*)pars.in.parameter("cwf_t"),
-          *(double*)pars.in.parameter("projection_min_weight") );
+    this->prepare_projector();
 
     this->imp.evaluate_local_occupation( 
           this->pars.in, this->pars.bands, 
@@ -585,14 +581,7 @@ namespace DFT_plus_DMFT
     //         this->pars.bands, this->pars.atom, 
     //         this->pars.in, this->space);
 
-    this->proj.evaluate_projector(
-          *(int*)pars.in.parameter("projector"),
-          *(int*)pars.in.parameter("DFT_solver"),
-          pars.bands, this->space, this->pars.atom,
-          *(double*)pars.in.parameter("cwf_ep0"),
-          *(double*)pars.in.parameter("cwf_ep1"),
-          *(double*)pars.in.parameter("cwf_t"),
-          *(double*)pars.in.parameter("projection_min_weight") );
+    this->prepare_projector();
 
     this->imp.evaluate_local_occupation( 
           this->pars.in, this->pars.bands, 

@@ -33,6 +33,7 @@ namespace DFT_plus_DMFT
     void solve();
 
     void working_init();
+    void prepare_projector();
 
     void DFT_DMFT_scf();
 

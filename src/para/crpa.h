@@ -2,7 +2,6 @@
 
 #include <string>
 #include <vector>
-#include <array>
 #include "../matrix_types.h"
 
 namespace DMFT
@@ -35,16 +34,10 @@ namespace DMFT
 
     struct projectors
     {
-      int nspin = 0;
-      int nk = 0;
-      int norb = 0;
-      std::vector<std::array<double, 3>> kpoints;
-      std::vector<double> weights;
-      std::vector<std::vector<int>> bands;
       // P[spin][k](band, orb) = <psi_nk|w_ak>, dimensionless.
       std::vector<std::vector<DFT_plus_DMFT::Matrix>> P;
 
-      void read();
+      void read(const std::vector<int>& nbands, int nk, int norb);
     };
   }
 }

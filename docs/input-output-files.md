@@ -40,9 +40,14 @@ The cRPA interface uses the following fixed paths relative to the DMFT calculati
 These paths are defined in `src/para/crpa.h` and `src/para/crpa.cpp`.
 The reader uses the independently bundled nlohmann/json library; it does not depend
 on the ComCTQMC JSON implementation.
-When `crpa true` is set in `DMFT.in`, `space.json` and `projectors.dat` are read and
-stored during initialization. Interaction import, and using the external space and
-projectors in place of the existing DMFT orbital construction, are not yet implemented.
+When `crpa true` is set in `DMFT.in`, `space.json` and `projectors.dat` are read during
+initialization and projection setup respectively. DMFT uses the supplied projector instead of constructing NAO/CWF
+projectors, both for SCF and for spectra. The existing `KS_bands_window()` selects
+the bands from `projection_window`, or reads the saved window for restart and spectra.
+Integration weights come from the existing DFT `k_weight.dat`.
+The projector construction settings do not alter the imported matrices.
+The spectral band window uses the existing DOS-window handling.
+Interaction import is not yet implemented; U, J and double counting retain the existing inputs.
 
 The JSON structure is:
 
@@ -58,44 +63,47 @@ The JSON structure is:
 }
 ```
 
-`atom_id` is the zero-based atom index in the DFT structure, not the index among
-correlated atoms. Atom IDs must be distinct and nonnegative; checking their correspondence
-to the DFT structure is deferred until the space is used in the calculation.
-`impurity_id` values must be consecutive starting at zero; atoms sharing an impurity
-must have identical ordered orbital labels. Labels are stored as supplied, without
-interpreting them as atomic basis indices or applying rotations.
+`atom_id` is the zero-based atom index in the DFT structure.
+`impurity_id` is the zero-based inequivalent impurity index.
+`orbitals` contains the ordered orbital labels.
 The order of `correlated_atoms` defines the correlated-atom indices. Each `orbitals`
 array defines the local orbital order; concatenating these arrays defines the global
 projector column order. Atom, impurity and orbital counts are derived from the contents.
-The reader directly extracts these fields and derives the counts; it does not perform
-additional index-range, duplicate-atom or equivalent-orbital consistency checks.
+
+The existing `correlated_atoms.info` and `symmetry.dat` are still read for shell,
+interaction and magnetic metadata. Counts, global orbital offsets and impurity mappings used in the
+calculation are taken from `space.json`. Local symmetry averaging is disabled for
+the imported orbitals, so their supplied order and basis are retained.
 
 ### Projector file format
 
 `crpa/projectors.dat` is whitespace-separated numeric text, without keywords or
 comments. Its layout, in reading order, is:
 
-1. Three integers: `nspin nk norb`. `nspin` is 1 (nonmagnetic) or 2 (collinear
-   up/down); SOC spinors are not supported. `norb` equals the total orbital count
-   from `space.json`.
-2. `nk` rows: `kx ky kz weight`, in the same k-point order as the DFT data.
-   Coordinates are fractional in reciprocal lattice vectors including 2*pi;
-   weights are dimensionless and normalized to sum to one, without a spin factor.
-3. For each spin channel, in order:
-   - One integer `nbands`, then `nbands` zero-based DFT band indices in matrix row order.
-     The same band list applies to every k point in that spin channel.
-   - `nk * nbands * norb` pairs `real imag`, ordered by k point, then band,
-     then global correlated orbital (orbital index varies fastest).
+The file contains only `real imag` pairs, ordered by spin, k point, band, then
+global correlated orbital (orbital index varies fastest).
+For each spin channel there are `nk * nbands[spin] * norb` pairs.
+
+The number of spin channels and `nk` come from DFT, `nbands[spin]` and matrix row
+order come from the existing DMFT band window, and `norb` comes from `space.json`.
+There are no dimensions or band indices in the file. The in-memory `projectors`
+structure stores only the matrices. Nonmagnetic and collinear up/down channels
+are supported; SOC spinors are not supported.
 
 Each pair represents the dimensionless complex matrix element
 `P[n,a](k,spin) = <psi_nk,spin | w_ak,spin>`; no conjugation is applied on input.
 The global orbital order is obtained by concatenating the orbital lists in `space.json`.
+K-point coordinates and weights are not stored in this file; k-point indices follow
+the existing DFT ordering, and integration uses the DFT weights.
 Each matrix uses the project's row-major Eigen `Matrix` type and is accessed as
 `crpa_projectors.P[spin][k](band, orb)`.
-Matrices are expected to satisfy `P^dagger P = I`; the reader neither orthogonalizes
-nor rotates them. It retains the supplied k-point weights and band indices without
-matching them against the DFT data at this stage. The same DFT wavefunctions and
-their phase/band conventions must be used when these projectors are applied.
+Only fixed-DFT calculations (`max_charge_step 1`) are supported.
+
+For each atom block DMFT computes `P^dagger diag(epsilon) P` in Hartree and uses its
+diagonal entries through the existing local-level interface. This integration retains
+the current solver's diagonal local-level and local-self-energy approximation; it does
+not add a general off-diagonal impurity model. Atomic overlap and eigenvector files
+are not read by the imported-projector path.
 
 ## Output files
 After the DFT+DMFT calculations finished, there will be following output files

@@ -40,33 +40,21 @@ namespace DMFT
       *this = std::move(result);
     }
 
-    void projectors::read()
+    void projectors::read(const std::vector<int>& nbands, int nk, int norb)
     {
       std::ifstream input(projector_file);
       if(!input) throw std::runtime_error(std::string("cannot open ") + projector_file);
       projectors result;
-      input >> result.nspin >> result.nk >> result.norb;
-
-      result.kpoints.resize(result.nk);
-      result.weights.resize(result.nk);
-      for(int ik=0; ik<result.nk; ik++)
-        input >> result.kpoints[ik][0] >> result.kpoints[ik][1]
-              >> result.kpoints[ik][2] >> result.weights[ik];
-
-      result.bands.resize(result.nspin);
-      result.P.resize(result.nspin);
-      for(int is=0; is<result.nspin; is++)
+      const int nspin = nbands.size();
+      result.P.resize(nspin);
+      for(int is=0; is<nspin; is++)
       {
-        int nbands = 0;
-        input >> nbands;
-        result.bands[is].resize(nbands);
-        for(int& band : result.bands[is]) input >> band;
-        result.P[is].resize(result.nk);
-        for(int ik=0; ik<result.nk; ik++)
+        result.P[is].resize(nk);
+        for(int ik=0; ik<nk; ik++)
         {
-          result.P[is][ik].resize(nbands, result.norb);
-          for(int iband=0; iband<nbands; iband++)
-            for(int iorb=0; iorb<result.norb; iorb++)
+          result.P[is][ik].resize(nbands[is], norb);
+          for(int iband=0; iband<nbands[is]; iband++)
+            for(int iorb=0; iorb<norb; iorb++)
             {
               double real = 0.0, imag = 0.0;
               input >> real >> imag;

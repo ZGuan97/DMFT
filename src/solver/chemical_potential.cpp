@@ -70,7 +70,7 @@ namespace DFT_plus_DMFT
     const int nspin=band.nspins();
     const int magnetism = *(int*)in.parameter("magnetism");
     const std::vector<int>& wbands=space.Wbands();
-    const int n_valence = space.valence();
+    const double n_valence = space.valence();
     const std::vector<double>& window = space.Ener_window();
     const std::complex<double> zero(0.0,0.0);
 
@@ -303,7 +303,7 @@ namespace DFT_plus_DMFT
     const int nks=band.nk();
     const int nspin=band.nspins();
     const std::vector<int>& wbands=space.Wbands();
-    const int n_valence = space.valence();
+    const double n_valence = space.valence();
     const std::vector<double>& window = space.Ener_window();
     const std::complex<double> zero(0.0,0.0);
 

@@ -24,7 +24,7 @@
 ### crpa
 - **Type**: Boolean (`true` or `false`, case-insensitive).
 - **Default**: `false`.
-- **Description**: Read and store `crpa/space.json` and `crpa/projectors.dat` during initialization when enabled. File reading errors stop the run. Using these data in place of the existing DMFT orbital construction and importing interactions are not yet implemented.
+- **Description**: Use `crpa/space.json` and `crpa/projectors.dat` for the correlated-space mapping and projectors in SCF and spectra, replacing NAO/CWF construction. Band selection uses the existing DMFT window; k-point weights come from DFT. Supports fixed-DFT calculations (`max_charge_step 1`). Interaction import is not yet implemented.
 
 [back to top](#list-of-all-available-parameters)
 

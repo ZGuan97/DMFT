@@ -8,6 +8,7 @@
 #include "../timer.h"
 #include "../debug.h"
 
+#include <Eigen/Dense>
 #include <mpi.h>
 
 
@@ -24,6 +25,44 @@
 
 namespace DFT_plus_DMFT
 {
+  void projector::use_crpa_projectors(const DMFT::crpa::projectors& external,
+                                      DFT_output::atoms_info& atom,
+                                      Hilbert_space& space)
+  {
+    const int rank = mpi_rank(), ntasks = mpi_ntasks();
+    const int nspin = external.P.size(), nk = external.P[0].size();
+    const int local_nk = (nk + ntasks - 1 - rank)/ntasks;
+    this->projector_mat.resize(local_nk);
+    this->TB_Hk.resize(local_nk);
+    this->n_basis = 0; // No atomic-basis wavefunctions are needed for fixed-DFT DMFT.
+    int local_k = 0;
+    for(int ik=rank; ik<nk; ik+=ntasks)
+    {
+      this->projector_mat[local_k].resize(atom.total_atoms());
+      this->TB_Hk[local_k].resize(atom.total_atoms());
+      int offset = 0;
+      for(int iatom=0; iatom<atom.total_atoms(); iatom++)
+      {
+        const int M = atom.iatom_norb()[iatom];
+        this->projector_mat[local_k][iatom].resize(nspin);
+        this->TB_Hk[local_k][iatom].resize(nspin);
+        for(int is=0; is<nspin; is++)
+        {
+          const Matrix P = external.P[is][ik].middleCols(offset, M);
+          auto& stored = this->projector_mat[local_k][iatom][is];
+          stored.assign(P.data(), P.data()+P.size());
+          const auto& energies = space.eigen_val()[is][ik];
+          const Eigen::Map<const Eigen::VectorXd> epsilon(energies.data(), energies.size());
+          auto& diagonal = this->TB_Hk[local_k][iatom][is];
+          diagonal.resize(M);
+          for(int m=0; m<M; m++) diagonal[m] = P.col(m).cwiseAbs2().dot(epsilon);
+        }
+        offset += M;
+      }
+      local_k++;
+    }
+  }
+
   void projector::evaluate_projector(
         const int projector_type,
         const int DFT_solver,
