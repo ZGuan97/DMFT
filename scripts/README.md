@@ -76,6 +76,20 @@ ln -s /path/to/DMFT-dev/scripts/abacus_update.sh abacus_update.sh
 - 同时支持旧式 `data-SR-sparse_SPIN0.csr`/`WFC_NAO_K*.txt` 和新式 `srs1_nao.csr`/`wfk*_nao.txt` 文件名。
 - 原有正交性和 KS 残差检查保留，单位及傅里叶相位不变。
 
+## cRPA 张量转 U/J
+
+在计算目录运行 `python /path/to/DMFT/scripts/Uijkl_to_UJ.py`，生成 `crpa/UJ.dat`。
+脚本顶部设置输入路径、编号起点和能量换算因子；轨道数由输入索引减去编号起点后的
+最大值加一得到。当前处理单个不等价杂质。
+
+输入 `crpa/Uijkl_impurity0.dat` 为静态空间轨道张量，第一行为表头 `i j k l U`，
+从第二行开始每行 `i j k l value`，支持 `#` 注释。
+指标定义为 `U[i,j,k,l] = <ij|W|kl>`：前两个指标属于 bra，
+后两个属于 ket。默认从 0 编号、单位 eV。
+U 取 `U[m,m,m,m]` 的平均；J 取所有 `m != n` 的 `U[m,n,n,m]` 的平均。
+单轨道时 J 为 0，未列出的张量元素按零处理。脚本使用 NumPy 读取、计算和输出。
+输出用于 `density_density` 或 `kanamori`；此处 U 为同轨道平均相互作用，不是 Slater F0。
+
 ## 本地验证
 
 ```bash
