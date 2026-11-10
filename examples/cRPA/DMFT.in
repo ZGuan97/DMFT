@@ -1,0 +1,18 @@
+DFT_solver ABACUS
+calculation scf
+crpa True
+temperature 1160
+impurity_solver rutgers-cthyb
+interaction_type density_density
+magnetism para
+max_charge_step 1
+max_DMFT_step 30
+max_DFT_step 1
+delta_sigma 0.0
+delta_rho 1.0e-4
+mc_step 1000000
+projection_window -2.0 1.0
+dos_window -116.0 466.0
+local_symmetry 0
+double_counting fll
+projection_min_weight 0.3

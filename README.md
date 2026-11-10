@@ -11,4 +11,5 @@ This is a standalone open-source package mainly writen by C++ for density functi
 - [Quickstart guide](#quickstart-guide)
   - [Input and output files](docs/input-output-files.md)
   - [Hands-on examples](docs/examples/hands-on-examples.md)
+  - [Runnable examples](examples/README.md)
 - [Developer manual](docs/developer.md)

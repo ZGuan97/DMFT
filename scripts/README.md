@@ -83,7 +83,9 @@ ln -s /path/to/DMFT-dev/scripts/abacus_update.sh abacus_update.sh
 最大值加一得到。当前处理单个不等价杂质。
 
 输入 `crpa/Uijkl_impurity0.dat` 为静态空间轨道张量，第一行为表头 `i j k l U`，
-从第二行开始每行 `i j k l value`，支持 `#` 注释。
+从第二行开始每行 `i j k l value`，或复数格式 `i j k l real imag`，支持 `#` 注释。
+复数格式可使用表头 `i j k l Re(U) Im(U)`。平均后的 U 和 J 的虚部绝对值
+均不超过 `1e-10` eV 时输出实部，否则报错并停止写入 `UJ.dat`。
 指标定义为 `U[i,j,k,l] = <ij|W|kl>`：前两个指标属于 bra，
 后两个属于 ket。默认从 0 编号、单位 eV。
 U 取 `U[m,m,m,m]` 的平均；J 取所有 `m != n` 的 `U[m,n,n,m]` 的平均。
