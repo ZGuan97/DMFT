@@ -50,7 +50,7 @@ namespace DFT_plus_DMFT
         {
           const Matrix P = external.P[is][ik].middleCols(offset, M);
           auto& stored = this->projector_mat[local_k][iatom][is];
-          stored.assign(P.data(), P.data()+P.size());
+          stored = P;
           const auto& energies = space.eigen_val()[is][ik];
           const Eigen::Map<const Eigen::VectorXd> epsilon(energies.data(), energies.size());
           auto& diagonal = this->TB_Hk[local_k][iatom][is];
