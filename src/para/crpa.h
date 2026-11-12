@@ -32,13 +32,15 @@ namespace DMFT
       std::vector<correlated_atom> correlated_atoms;
       int nimpurities = 0;
       int norb = 0;
+      // Zero-based KS indices, ordered by spin then projector row; defines Q_W.
+      std::vector<std::vector<int>> window_bands;
 
       void read();
     };
 
     struct projectors
     {
-      // P[spin][k](band, orb) = <psi_nk|w_ak>, dimensionless.
+      // Stores tilde P[spin][k](band, orb) = <psi_nk|w_ak>, dimensionless.
       std::vector<std::vector<DFT_plus_DMFT::Matrix>> P;
 
       void read(const std::vector<int>& nbands, int nk, int norb);

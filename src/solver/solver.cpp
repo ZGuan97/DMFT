@@ -35,6 +35,7 @@ namespace DFT_plus_DMFT
     if(*(const bool*)this->pars.in.parameter("crpa"))
     {
       this->crpa_space.read();
+      this->space.use_crpa_window(this->crpa_space.window_bands);
       this->pars.atom.use_crpa_space(this->crpa_space);
       this->pars.atom.read_crpa_UJ();
       if(*(int*)this->pars.in.parameter("max_charge_step") > 1)

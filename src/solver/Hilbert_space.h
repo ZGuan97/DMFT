@@ -22,6 +22,8 @@ namespace DFT_plus_DMFT
           DFT_output::atoms_info& atom, 
           DMFT::input_info& in );
     
+    void use_crpa_window(const std::vector<std::vector<int>>& bands){crpa_window = bands;}
+
     // interfaces
     std::vector<int>& Wbands(){return n_wbands;}
     std::vector<int>& DOSWbands(){return DOS_n_wbands;}
@@ -44,6 +46,7 @@ namespace DFT_plus_DMFT
 
     private:
 
+    std::vector<std::vector<int>> crpa_window;
     int nspin;   
     double n_valence;               //Number of valence electrons  
     int n_KS_bands;

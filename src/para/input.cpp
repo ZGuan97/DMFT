@@ -314,7 +314,8 @@ namespace DMFT
     }
     if(this->flag_double_counting==2) GLV::ofs_running << "nf  " << this->nf << std::endl;
 
-    //projection_energy_window
+    //projection_energy_window (unused for imported cRPA windows)
+    this->proj_window = {-5.0, 5.0};
     try {
       std::vector<std::string> str_val;
       this->read_parameter("projection_window", str_val, 2);
@@ -350,9 +351,9 @@ namespace DMFT
     }
     catch(const bool not_given){
       this->DOS_window[0] = this->proj_window[0];
-      this->DOS_window[1] = this->proj_window[0];
+      this->DOS_window[1] = this->proj_window[1];
     }
-    if(this->DOS_window[0]>this->proj_window[0] || this->DOS_window[1]<this->proj_window[1]){
+    if(!this->flag_crpa && (this->DOS_window[0]>this->proj_window[0] || this->DOS_window[1]<this->proj_window[1])){
       std::cerr << "The DOS window must be larger than projection window!!!" << std::endl;
       std::exit(EXIT_FAILURE);
     }

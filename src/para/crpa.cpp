@@ -46,6 +46,7 @@ namespace DMFT
       const auto atoms = document.at("correlated_atoms").get<nlohmann::json::array_t>();
 
       corr_space result;
+      result.window_bands = document.at("window_bands").get<std::vector<std::vector<int>>>();
       for(const auto& entry : atoms)
       {
         correlated_atom atom;

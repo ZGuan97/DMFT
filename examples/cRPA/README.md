@@ -4,6 +4,7 @@
 运行 NiO 的单杂质 DMFT。projector 由 NiO 原 NAO projector 导出；
 相互作用张量由脚本生成，不是 cRPA 屏蔽计算的结果。
 
+- `space.json` 的 `window_bands: [[8,9,10,11,12]]` 定义 KS 窗口投影算符 Q；DMFT 直接按这些索引选带，不使用 `projection_window`。`projectors.dat` 提供正交化后的 tilde P。
 - 5 个 Ni-d 轨道，666 个 k 点，DFT band 编号 8–12（从 0 编号）。
 - 温度 1160 K，投影窗口 −2 到 1 eV。
 - U=4 eV、J=1 eV，density_density 相互作用，FLL 双计数。

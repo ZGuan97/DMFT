@@ -13,7 +13,7 @@ namespace DFT_plus_DMFT
 {
   void Hilbert_space::KS_bands_window(
         const int type,
-        DFT_output::KS_bands& band, 
+        DFT_output::KS_bands& band,
         DFT_output::atoms_info& atom,
         DMFT::input_info& in)
   {
@@ -79,8 +79,8 @@ namespace DFT_plus_DMFT
         }
       }
     }
-    
-    if(type==0) this->deter_bands_window_first_charge_step(in, band);
+
+    if(!crpa_window.empty() || type==0) this->deter_bands_window_first_charge_step(in, band);
     else if(type==1) this->read_bands_windows(band);
     else if(type==2){
       // The chemical-potential routine counts only window electrons.
@@ -90,29 +90,29 @@ namespace DFT_plus_DMFT
     // type=2 retains the band indices and refreshes eigenvalues after a KS update.
 
     for(int is=0; is<this->nspin; is++){
-      if(this->eigen_values[is].empty()) 
+      if(this->eigen_values[is].empty())
         this->eigen_values[is].resize(band.nk());
 
       for(int ik=0; ik<band.nk(); ik++){
-        if(this->eigen_values[is][ik].empty()) 
+        if(this->eigen_values[is][ik].empty())
           this->eigen_values[is][ik].resize(this->n_wbands[is]);
 
         for(int iband=0; iband<this->n_wbands[is]; iband++)
-          this->eigen_values[is][ik][iband] = 
+          this->eigen_values[is][ik][iband] =
           KS_eigenvalues[is][ik][this->wbands_ibands[is][iband]];
       }
     }//is
 
     for(int is=0; is<this->nspin; is++){
-      if(this->DOS_eigen_values[is].empty()) 
+      if(this->DOS_eigen_values[is].empty())
         this->DOS_eigen_values[is].resize(band.nk());
 
       for(int ik=0; ik<band.nk(); ik++){
-        if(this->DOS_eigen_values[is][ik].empty()) 
+        if(this->DOS_eigen_values[is][ik].empty())
           this->DOS_eigen_values[is][ik].resize(this->DOS_n_wbands[is]);
 
         for(int iband=0; iband<this->DOS_n_wbands[is]; iband++)
-          this->DOS_eigen_values[is][ik][iband] = 
+          this->DOS_eigen_values[is][ik][iband] =
           KS_eigenvalues[is][ik][this->DOS_wbands_ibands[is][iband]];
       }
     }//is
@@ -142,48 +142,58 @@ namespace DFT_plus_DMFT
       int lower_band_index;
       int iband;
 
-      bool get_lower_band = false;
-      iband=0;
-      while(!get_lower_band)
+      if(!crpa_window.empty())
       {
-        if(iband>=this->n_KS_bands)
-        {
-          std::cerr << "Error in finding lower band" <<std::endl;
-          std::exit(EXIT_FAILURE);
-        }
-
-        for(int ik=0; ik<this->n_k_points; ik++)
-        {
-          if(KS_eigenvalues[is][ik][iband]>=this->energy_up_down[0])
-          {
-            get_lower_band=true;
-            lower_band_index=iband;
-            break;
-          }
-        }
-        iband++;
+        const auto& indices = crpa_window[is];
+        lower_band_index = indices.front();
+        upper_band_index = indices.back();
       }
-
-      bool get_upper_band = false;
-      iband=this->n_KS_bands-1;
-      while(!get_upper_band)
+      else
       {
-        if(iband<0)
+        bool get_lower_band = false;
+        iband=0;
+        while(!get_lower_band)
         {
-          std::cerr << "Error in finding upper band" <<std::endl;
-          std::exit(EXIT_FAILURE);
+          if(iband>=this->n_KS_bands)
+          {
+            std::cerr << "Error in finding lower band" <<std::endl;
+            std::exit(EXIT_FAILURE);
+          }
+
+          for(int ik=0; ik<this->n_k_points; ik++)
+          {
+            if(KS_eigenvalues[is][ik][iband]>=this->energy_up_down[0])
+            {
+              get_lower_band=true;
+              lower_band_index=iband;
+              break;
+            }
+          }
+          iband++;
         }
 
-        for(int ik=0; ik<this->n_k_points; ik++)
+        bool get_upper_band = false;
+        iband=this->n_KS_bands-1;
+        while(!get_upper_band)
         {
-          if(KS_eigenvalues[is][ik][iband]<=this->energy_up_down[1])
+          if(iband<0)
           {
-            get_upper_band=true;
-            upper_band_index=iband;
-            break;
+            std::cerr << "Error in finding upper band" <<std::endl;
+            std::exit(EXIT_FAILURE);
           }
-        }  
-        iband--;
+
+          for(int ik=0; ik<this->n_k_points; ik++)
+          {
+            if(KS_eigenvalues[is][ik][iband]<=this->energy_up_down[1])
+            {
+              get_upper_band=true;
+              upper_band_index=iband;
+              break;
+            }
+          }
+          iband--;
+        }
+
       }
 
       //Find maximum and minimum energy of bands in the window
@@ -197,7 +207,7 @@ namespace DFT_plus_DMFT
         if( max_en < KS_eigenvalues[is][ik][ upper_band_index ] ) max_en = KS_eigenvalues[is][ik][ upper_band_index ];
       }
 
-      
+
       GLV::ofs_running << "\n==============Correlated Kohn-Sham bands subset==============" << std::endl;
       if(this->nspin==1)
       {
@@ -209,7 +219,7 @@ namespace DFT_plus_DMFT
         if(is==0) GLV::ofs_running << "Bands number of spin up:   " << lower_band_index << " ~ " << upper_band_index << std::endl;
         else GLV::ofs_running << "Bands number of spin down: " << lower_band_index << " ~ " << upper_band_index << std::endl;
       }
-      
+
       this->n_wbands.at(is) = upper_band_index-lower_band_index+1;
       this->wbands_ibands.at(is).resize(upper_band_index-lower_band_index+1);
       this->ibands_wbands.at(is).resize(this->n_KS_bands,-1);
@@ -309,14 +319,14 @@ namespace DFT_plus_DMFT
 
       if(this->corr_bands_DOS_bands[is].empty())
         this->corr_bands_DOS_bands[is].resize(this->n_wbands[is]);
-      
+
       for(int i_corr_band=0; i_corr_band<this->n_wbands[is]; i_corr_band++)
       {
         int i_KS_band = this->wbands_ibands[is][i_corr_band];
         this->corr_bands_DOS_bands[is][i_corr_band] = this->DOS_ibands_wbands[is][i_KS_band];
       }
     }//is
-    
+
     return;
   }
 

@@ -24,7 +24,7 @@
 ### crpa
 - **Type**: Boolean (`true` or `false`, case-insensitive).
 - **Default**: `false`.
-- **Description**: Read `crpa/space.json`, `crpa/projectors.dat` and `crpa/UJ.dat` for the correlated space, projectors and scalar U/J. Band selection uses the existing DMFT window; k-point weights come from DFT. Supports a single inequivalent impurity in fixed-DFT calculations (`max_charge_step 1`), with `density_density` or `kanamori` interactions.
+- **Description**: Read `crpa/space.json`, `crpa/projectors.dat` and `crpa/UJ.dat` for the correlated space, projectors and scalar U/J. Band selection uses zero-based `space.json.window_bands` directly (`projection_window` is ignored); k-point weights come from DFT. Supports a single inequivalent impurity in fixed-DFT calculations (`max_charge_step 1`), with `density_density` or `kanamori` interactions.
 
 [back to top](#list-of-all-available-parameters)
 

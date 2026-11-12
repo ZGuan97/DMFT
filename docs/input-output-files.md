@@ -56,6 +56,7 @@ The JSON structure is:
 
 ```json
 {
+  "window_bands": [[8, 9, 10, 11, 12]],
   "correlated_atoms": [
     {
       "atom_id": 0,
@@ -69,6 +70,16 @@ The JSON structure is:
 `atom_id` is the zero-based atom index in the DFT structure.
 `impurity_id` is the zero-based inequivalent impurity index.
 `orbitals` contains the ordered orbital labels.
+`window_bands` is required: one array per spin channel, listing zero-based KS
+band indices in projector-row order. These indices define Q_W, the projector
+onto the selected KS window. The same list applies at every k point. DMFT
+uses these indices directly for eigenvalues, band mappings and window electron
+count, including restarts; `projection_window` does not select bands in cRPA mode
+and may be omitted. Existing inputs must add this field. Each spin list must be
+nonempty, ascending, consecutive and within the DFT band range; the number of
+lists must match DFT spins. These are input conventions; the reader does not validate them. K-dependent/disconnected windows are not supported.
+`dos_window` still selects the spectra bands and must contain the imported window.
+
 The order of `correlated_atoms` defines the correlated-atom indices. Each `orbitals`
 array defines the local orbital order; concatenating these arrays defines the global
 projector column order. Atom, impurity and orbital counts are derived from the contents.
@@ -88,13 +99,13 @@ global correlated orbital (orbital index varies fastest).
 For each spin channel there are `nk * nbands[spin] * norb` pairs.
 
 The number of spin channels and `nk` come from DFT, `nbands[spin]` and matrix row
-order come from the existing DMFT band window, and `norb` comes from `space.json`.
-There are no dimensions or band indices in the file. The in-memory `projectors`
+order come from `space.json.window_bands`, and `norb` comes from `space.json`.
+There are no dimensions or band indices in this numeric file; indices are supplied by `space.json.window_bands`. The in-memory `projectors`
 structure stores only the matrices. Nonmagnetic and collinear up/down channels
 are supported; SOC spinors are not supported.
 
 Each pair represents the dimensionless complex matrix element
-`P[n,a](k,spin) = <psi_nk,spin | w_ak,spin>`; no conjugation is applied on input.
+`tilde P[n,a](k,spin) = <psi_nk,spin | w_ak,spin>`; no conjugation or orthonormalization is applied on input. Columns must already be orthonormal.
 The global orbital order is obtained by concatenating the orbital lists in `space.json`.
 K-point coordinates and weights are not stored in this file; k-point indices follow
 the existing DFT ordering, and integration uses the DFT weights.
