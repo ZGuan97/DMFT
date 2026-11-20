@@ -48,8 +48,8 @@ namespace DMFT
       std::cerr << "The current Rutgers interface requires collinear spins without SOC" << std::endl;
       std::exit(EXIT_FAILURE);
     }
-    const int ntau = *(int*)in.parameter("n_tau");
-    const int nomega = *(int*)in.parameter("n_omega");
+    const int ntau = in.get().n_tau;
+    const int nomega = in.get().n_omega;
 
     //Create directory impurity 
     std::string dir_impurity_solving = "dmft";
@@ -140,8 +140,6 @@ namespace DMFT
         for(int m=0; m<m_tot; m++)
           Eimpa[is](m, m) -= average_Eimp;
 
-      this->write_params(in, current_dir+"/PARAMS", mu-average_Eimp);
-
       //===========================================
       //           write  delta.dat
       //===========================================
@@ -151,7 +149,8 @@ namespace DMFT
       //===========================================
       //           write  ctqmc.cix
       //===========================================
-      this->write_cix(nspin, m_tot, current_dir+"/ctqmc.cix", Eimpa, Utensor);
+      const bool diagonal = this->write_cix(nspin, m_tot, current_dir+"/ctqmc.cix", Eimpa, Utensor);
+      this->write_params(in, current_dir+"/PARAMS", mu-average_Eimp, diagonal);
 
       //==================================================
       //   write  Sigma.in; the input self-energy 
@@ -190,30 +189,32 @@ namespace DMFT
   }
 
   void Rutgers_CTHYB::write_params(DMFT::input_info& in, 
-                  const std::string file, const double mu)
+                  const std::string file, const double mu, const bool diagonal)
   {
     debug::codestamp("Rutgers_CTHYB::write_params");
 
     std::ofstream ofs(file.c_str(), std::ios::out);
 
-    ofs << "nom  " << *(int*)in.parameter("n_omega") 
+    ofs << "nom  " << in.get().n_omega
         << "    #Number of Matsubara frequency points sampled\n";
-    ofs << "Ntau " << *(int*)in.parameter("n_tau") 
+    ofs << "Ntau " << in.get().n_tau
         << "    #Number of imaginary time τ points to spline input hybridization function\n";
     ofs << "beta " << std::fixed << std::setprecision(9) 
-        << *(double*)in.parameter("beta")/GLC::Hartree_to_eV << "    #Inverse temperature\n";  //Hartree to eV
+        << in.get().beta/GLC::Hartree_to_eV << "    #Inverse temperature\n";  //Hartree to eV
     ofs << "U 0.0    #Coulomb repulsion (F0), This information is wrtten in cix file\n";
     ofs << "mu " << std::setprecision(15) << mu*GLC::Hartree_to_eV 
         << "    #Chemical potential, This information is wrtten in cix file\n";
     ofs << "warmup 100000    #Warmup number of QMC steps\n";
-    ofs << "M " << *(long long*)in.parameter("mc_step") << "    #Total number of Monte Carlo steps\n";
+    ofs << "M " << in.get().mc_step << "    #Total number of Monte Carlo steps\n";
     ofs << "tsample 20    #How often to record measurements\n";
     ofs << "Nmax 200    #How often to record measurements\n";
     ofs << "GlobalFlip 500000    #how often to perform global flip\n";
     ofs << "svd_lmax 25    #We will use SVD basis to expand G, with this cutoff\n";
-    ofs << "svd_Ntau " << *(int*)in.parameter("n_tau") + 1 << '\n';
+    ofs << "svd_Ntau " << in.get().n_tau + 1 << '\n';
     ofs << "aom 1    #number of frequency points to determin high frequency tail\n";
-    ofs << "mode SH    #We will use self-energy sampling, and Hubbard I tail\n";
+    // Direct self-energy sampling can fail for multidimensional atomic blocks.
+    // Use the Dyson self-energy in that case, retaining the Hubbard-I tail.
+    ofs << "mode " << (diagonal ? "SH" : "GH") << '\n';
     ofs << "Delta delta.dat    #Input bath function hybridization\n";
     ofs << "cix ctqmc.cix    #Input file with atomic state\n";
     ofs << "Gf Gw.out    #Filename of the output Green’s function G(iw)\n";
@@ -259,7 +260,7 @@ namespace DMFT
     return;
   }
 
-  void Rutgers_CTHYB::write_cix(const int nspin, const int m_tot, const std::string file, 
+  bool Rutgers_CTHYB::write_cix(const int nspin, const int m_tot, const std::string file,
           const std::vector<DFT_plus_DMFT::Matrix>& Esplit,
           const std::vector<std::vector<std::vector<std::vector<double>>>>& Utensor)
   {
@@ -276,6 +277,10 @@ namespace DMFT
       std::ofstream ofs(file.c_str());
       if(!ofs) throw std::runtime_error("Cannot open " + file);
       rutgers_atomic::write_cix(ofs, levels, Utensor, blocks, GLC::Hartree_to_eV);
+      // Diagonal here means every atomic block contains a single state.
+      for(const auto& block : blocks)
+        if(block.states.size() > 1) return false;
+      return true;
     }
     catch(const std::exception& error)
     {
@@ -298,7 +303,7 @@ namespace DMFT
     const std::vector<int>& norb_sub = atom.iatom_norb();
     const bool soc = band.soc();
     const int nspin = band.nspins();
-    const int magnetism = *(int*)in.parameter("magnetism");
+    const int magnetism = in.get().flag_magnetism;
 
     int count=0;
 
