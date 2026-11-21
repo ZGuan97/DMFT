@@ -1,4 +1,4 @@
-"""Convert non-SOC, nspin=1 ABACUS output to the DMFT-dev interface."""
+"""Convert non-SOC, nspin=1 ABACUS output to the DMFT interface."""
 from pathlib import Path
 import re
 import json
@@ -120,7 +120,7 @@ for ik, k in enumerate(kpoints):
             coefficients.append(a[:, 0] + 1j * a[:, 1])
     c = np.array(coefficients).T
     e = np.array(energies)
-    # ABACUS uses exp(+i k.R). DMFT-dev forms its conjugate column for projection.
+    # ABACUS uses exp(+i k.R). DMFT forms its conjugate column for projection.
     sk = sum(np.exp(2j * np.pi * np.dot(k, r)) * matrix for r, _, _, _, matrix in sblocks)
     hk = sum(np.exp(2j * np.pi * np.dot(k, r)) * matrix for r, _, _, _, matrix in hblocks)
     max_norm = max(max_norm, float(np.max(np.abs(c.conj().T @ sk @ c - np.eye(nb)))))

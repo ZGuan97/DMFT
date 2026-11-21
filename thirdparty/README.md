@@ -23,4 +23,4 @@ production build. Only headers and licenses are retained; upstream tests,
 benchmarks, documentation and unsupported modules are not needed here.
 Add eigen-3.4.0 to the include path. No separate Eigen library build is required.
 The new lattice and density_matrix modules use Eigen's native CPU algorithms,
-without EIGEN_USE_MKL_ALL. Other DMFT-dev modules still require MKL.
+without EIGEN_USE_MKL_ALL. Other DMFT modules still require MKL.

@@ -1,6 +1,6 @@
 # ABACUS 电荷接口脚本
 
-这些脚本执行文件交换和单次 KS 更新；DMFT-dev C++ 主程序管理内外循环、密度矩阵及电荷混合。
+这些脚本执行文件交换和单次 KS 更新；DMFT C++ 主程序管理内外循环、密度矩阵及电荷混合。
 
 - `prepare_abacus.py`：从参考 STRU 计算准确晶胞体积，准备初始 CSR 和 cube 的链接。
 - `abacus_step.py`：准备一轮 ABACUS 输入，独立启动 ABACUS，转换输出并更新接口链接。
@@ -33,7 +33,7 @@
 在计算目录执行：
 
 ```bash
-python /path/to/DMFT-dev/scripts/prepare_abacus.py
+python /path/to/DMFT/scripts/prepare_abacus.py
 ```
 
 脚本写入 `abacus_charge_volume.dat`（bohr³），并准备初始 `abacus_charge_reference.csr` 和 `abacus_charge_reference.cube`。原生 DMR 的 Ionic Step 文件头含自旋及结构信息，会转换为 C++ 接口的 STEP/矩阵维数/R 块数格式，CSR 数值、列索引和行指针保持原样；块数按实际输出统计，因为 ABACUS 会省略空块。旧式 CSR 和 cube 仍使用符号链接。已有参考文件保持原样。若自动识别不到输出，配置中可显式给出 `reference_density_matrix`、`reference_cube` 路径，两者也相对于计算目录解析。
@@ -50,7 +50,7 @@ dft/outputs_to_DMFT/symmetry.dat
 初次转换时，在计算目录的 `dft` 中放入实际 INPUT、STRU、KPT 和 `OUT.<suffix>`，先提供上述两份元数据，再执行：
 
 ```bash
-python /path/to/DMFT-dev/scripts/convert_abacus.py
+python /path/to/DMFT/scripts/convert_abacus.py
 ```
 
 若这份接口需要作为不变的初始参考，将它放在单独目录，并让运行目录的 `dft/outputs_to_DMFT` 以符号链接指向它。每轮桥接会复制元数据到新接口，并只替换这个链接；不覆盖原始接口目录。
@@ -58,10 +58,10 @@ python /path/to/DMFT-dev/scripts/convert_abacus.py
 在计算目录创建通用入口的符号链接，供 C++ 调用：
 
 ```bash
-ln -s /path/to/DMFT-dev/scripts/abacus_update.sh abacus_update.sh
+ln -s /path/to/DMFT/scripts/abacus_update.sh abacus_update.sh
 ```
 
-入口默认使用 `DMFT-dev/python/bin/python`，该环境不存在时使用 `python3`；可通过 `DMFT_PYTHON` 指定解释器。脚本保持计算目录为当前工作目录。
+入口默认使用 `scripts/` 上一级的 `python/bin/python`（即 `DMFT/python`），该环境不存在时使用 `python3`；可通过 `DMFT_PYTHON` 指定解释器。脚本保持计算目录为当前工作目录。
 
 每轮使用 `init_chg dm` 和 `scf_nmax 1`，输出至 `abacus_charge/stepN`。cube 统一复制成该轮目录下的 `charge.cube`，C++ 不再依赖材料的输出后缀。
 
@@ -79,7 +79,7 @@ ln -s /path/to/DMFT-dev/scripts/abacus_update.sh abacus_update.sh
 ## 本地验证
 
 ```bash
-python /path/to/DMFT-dev/scripts/test_abacus_interface.py
+python /path/to/DMFT/scripts/test_abacus_interface.py
 ```
 
 小文件测试覆盖 Gamma/MP 完整和时间反演约简网格、显式积分点、非对称网格拒绝、不同晶胞与后缀、七个 f 轨道元数据、参考文件准备和单步桥接。桥接测试使用模拟外部程序，不启动真实 ABACUS。
