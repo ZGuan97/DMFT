@@ -1,0 +1,356 @@
+\documentclass[UTF8,fontset=fandol,11pt]{ctexart}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,bm,booktabs,hyperref}
+\title{最大熵解析延拓：随机退火与凸优化}
+\author{GW+DMFT 项目}
+\date{2026年11月11日}
+\begin{document}
+\maketitle
+
+本文给出当前 Python MaxEnt 实现所采用的数学定义、离散约定和迭代公式。考虑单位谱权重的费米子对角格林函数，采用独立数据误差与均匀实频网格，分别给出随机退火和基于凸对偶的确定性求解方法。
+
+\section{谱表示与离散核}
+费米子格林函数的虚时间谱表示为
+\begin{equation}
+    G(\tau)=-\int_{-\infty}^{\infty}\frac{e^{-\tau\omega}}{1+e^{-\beta\omega}}A(\omega)\,d\omega,\qquad 0\leq\tau\leq\beta,
+\end{equation}
+其中
+\begin{equation}
+    A(\omega)\geq0,\qquad \int_{-\infty}^{\infty}A(\omega)\,d\omega=1.
+\end{equation}
+$\omega$ 为相对于输入所选能量零点的频率，$\beta$ 为逆温度。若 $\omega$ 的单位为能量，则 $\tau,\beta$ 的单位为能量的倒数，$A$ 的单位为能量的倒数。
+
+取 $N_\tau$ 个虚时间点 $\tau_i$，以及 $M=2N_w+1$ 个均匀频率点
+\begin{equation}
+    \omega_j=j\Delta\omega,\qquad j=-N_w,\ldots,N_w.
+\end{equation}
+定义 $y_i=-G(\tau_i)$、$a_j=A(\omega_j)$，使用包括端点在内的等权矩形求积：
+\begin{align}
+    y_i^{\mathrm{fit}}&=\sum_jK_{ij}a_j,\\
+    K_{ij}&=\Delta\omega\,\frac{e^{-\tau_i\omega_j}}{1+e^{-\beta\omega_j}},\\
+    \Delta\omega\sum_j a_j&=1.
+\end{align}
+$K$ 已包含积分权重，因此 $a_j$ 仍是谱密度。虚时间点无需均匀分布。为避免指数溢出，核等价地计算为
+\begin{equation}
+    K_{ij}=\Delta\omega\exp\!\left[-\tau_i\omega_j-\operatorname{logaddexp}(0,-\beta\omega_j)\right],
+\end{equation}
+其中 $\operatorname{logaddexp}(x,y)=\log(e^x+e^y)$ 采用稳定的数值实现。
+
+\section{似然、相对熵与目标函数}
+\subsection{数据误差}
+假设各数据点的误差相互独立且服从高斯分布，协方差为
+\begin{equation}
+    C_{ii'}=\sigma_i^2\delta_{ii'}.
+\end{equation}
+对应的似然及拟合误差为
+\begin{align}
+    P(y\mid a)&\propto\exp[-\chi^2(a)/2],\\
+    \chi^2(a)&=(Ka-y)^{\mathsf T}C^{-1}(Ka-y)=\sum_i\frac{[(Ka)_i-y_i]^2}{\sigma_i^2}.
+\end{align}
+当前误差模型取
+\begin{equation}
+    \sigma_i=\max(\widetilde\sigma_i,10^{-5}),\qquad
+    \widetilde\sigma_i=\begin{cases}\delta g\,|G(\tau_i)|,&\text{相对误差},\\ \delta g,&\text{绝对误差}.\end{cases}
+\end{equation}
+
+\subsection{默认模型与熵}
+设默认模型 $m_j>0$，并满足
+\begin{equation}
+    \Delta\omega\sum_jm_j=1.
+\end{equation}
+离散相对熵定义为
+\begin{equation}
+    S(a\mid m)=\Delta\omega\sum_j\left[a_j-m_j-a_j\log\frac{a_j}{m_j}\right].
+\end{equation}
+在 $a$ 与 $m$ 具有相同归一化的条件下，线性项之和为零，故
+\begin{equation}
+    S(a\mid m)=-\Delta\omega\sum_j a_j\log\frac{a_j}{m_j}\leq0.
+    \label{eq:entropy}
+\end{equation}
+以 $p_j=a_j\Delta\omega$、$q_j=m_j\Delta\omega$ 表示各频率区间内的权重，则 $S=-\sum_jp_j\log(p_j/q_j)$。
+
+\subsection{最大熵变分问题}
+采用熵先验 $P(a\mid\alpha,m)\propto e^{\alpha S}$，固定 $\alpha>0$ 时求解
+\begin{equation}
+    \min_{a_j>0,\;\Delta\omega\sum_j a_j=1}Q_\alpha(a),\qquad Q_\alpha(a)=\frac12\chi^2(a)-\alpha S(a\mid m).
+    \label{eq:objective}
+\end{equation}
+令 $H=K^{\mathsf T}C^{-1}K$。在正谱内部，使用式\eqref{eq:entropy} 得到
+\begin{align}
+    \frac{\partial Q_\alpha}{\partial a_j}&=[K^{\mathsf T}C^{-1}(Ka-y)]_j+\alpha\Delta\omega\left(\log\frac{a_j}{m_j}+1\right),\\
+    \frac{\partial^2 Q_\alpha}{\partial a_j\partial a_k}&=H_{jk}+\alpha\frac{\Delta\omega}{a_j}\delta_{jk}.
+\end{align}
+引入归一化约束的拉格朗日乘子 $\mu$，驻点满足
+\begin{equation}
+    [K^{\mathsf T}C^{-1}(Ka-y)]_j+\alpha\Delta\omega\left(\log\frac{a_j}{m_j}+1\right)+\mu\Delta\omega=0.
+\end{equation}
+$\alpha>0$ 时熵曲率为正；因此固定 $\alpha$ 的目标在正谱区域严格凸。随机退火版本不直接解驻点方程；凸优化版本通过等价对偶问题求解。下面分别说明两种方法。
+
+\section{按 Fortran 规则随机退火}
+随机退火使用式\eqref{eq:entropy} 中的对数项表达式，但不施加单位归一化约束。谱权重偏离 1 时，该表达式与含线性项的离散相对熵不同，也不保证非正。以下令谱权重可以随更新变化。
+\subsection{双点谱权重转移}
+随机选择两个不同频率点 $j,k$，提出更新
+\begin{equation}
+    a'_j=a_j+\delta_j,\qquad a'_k=a_k+\delta_k,\qquad a'_l=a_l\quad(l\ne j,k).
+\end{equation}
+一次提议的总谱权重变化为
+\begin{equation}
+    \Delta\omega\sum_l(a'_l-a_l)=\Delta\omega(\delta_j+\delta_k).
+\end{equation}
+步长由独立均匀随机变量 $u_j,u_k\in[0,1)$ 给出：
+\begin{equation}
+    \delta_j=d_j(u_j-1/2),\qquad \delta_k=-\delta_j+0.05d_k(u_k-1/2).
+\end{equation}
+$r$ 是步长系数，每次退火开始时 $d_l=(0.1a_l+0.01)r$。若 $a'_j<0$，只重抽 $\delta_j$；若 $a'_k<0$，重抽两个点及其步长。
+
+\subsection{目标函数的局部增量}
+定义标准化残差与残差增量
+\begin{equation}
+    R_i=\frac{(Ka)_i-y_i}{\sigma_i},\qquad c_i=\frac{K_{ij}\delta_j+K_{ik}\delta_k}{\sigma_i}.
+\end{equation}
+于是
+\begin{equation}
+    \Delta\chi^2=\sum_i[(R_i+c_i)^2-R_i^2]=\sum_i c_i(2R_i+c_i).
+\end{equation}
+熵增量仅涉及两个频率点：
+\begin{equation}
+    \Delta S=-\Delta\omega\left[a'_j\log\frac{a'_j}{m_j}+a'_k\log\frac{a'_k}{m_k}-a_j\log\frac{a_j}{m_j}-a_k\log\frac{a_k}{m_k}\right].
+\end{equation}
+因此
+\begin{equation}
+    \Delta Q=\frac12\Delta\chi^2-\alpha\Delta S.
+\end{equation}
+每个 sweep 开始时重新计算 $Ka$，试探时用更新后的拟合值计算 $\chi^2$。局部熵增量与外层总熵采用同一约定：对 $m_j>0$，$a_j=0$ 时取 $a_j\log(a_j/m_j)=0$，正谱值不作截断。
+
+\subsection{退火接受规则}
+引入人工退火温度 $T_{\mathrm a}>0$，采用接受概率
+\begin{equation}
+    P_{\mathrm{acc}}=\min\left(1,e^{-\Delta Q/T_{\mathrm a}}\right).
+\end{equation}
+$T_{\mathrm a}$ 与物理逆温度 $\beta$ 无关。实现中每次抽取一个 $u\in[0,1)$，直接判断 $u<e^{-\Delta Q/T_{\mathrm a}}$。指数非负时必然接受，因此与式中的概率上限等价。代码不再设置 $-100$ 截断；正指数过大时，浮点计算可能得到正无穷，比较仍会接受。
+
+每个 sweep 尝试 $M$ 次双点更新。每 100 个 sweep 统计接受率 $f$，只计入 $a_j>0.1a_{\max}$ 的试探，其中 $a_{\max}$ 在退火开始和每次重新计算步长时更新。随后调整
+\begin{equation}
+    r\leftarrow\begin{cases}1.5r,&f>0.1\ \text{且}\ r<0.01,\\r/1.5,&f\leq0.1\ \text{且}\ r>0.001,\\r,&\text{其它情况},\end{cases}
+\end{equation}
+随后取 $d_l=(0.1a_l+0.01a_{\max})r$，并降温：
+\begin{equation}
+    T_{\mathrm a}\leftarrow T_{\mathrm a}/1.5.
+\end{equation}
+每次退火固定执行指定 sweep 数。提议幅度具有状态依赖和自适应调整，且未采用一般 Hastings 提议比修正；这里将该过程用作优化算法，不据此解释后验采样分布。
+
+\section{正则化参数的更新}
+为与旧实现保持一致，外层使用熵与曲率迹的平衡条件更新 $\alpha$。定义
+\begin{equation}
+    D=\operatorname{diag}\left(\sqrt{a_j/\Delta\omega}\right),\qquad B=C^{-1/2}KD,\qquad \Lambda=DHD=B^{\mathsf T}B.
+\end{equation}
+在此尺度变换下，目标函数的 Hessian 满足
+\begin{equation}
+    D\nabla^2Q_\alpha D=\Lambda+\alpha I.
+\end{equation}
+设 $\Lambda$ 的非负特征值为 $\lambda_l$，计算
+\begin{equation}
+    \mathcal T(\alpha)=\operatorname{Tr}[\Lambda(\Lambda+\alpha I)^{-1}]=\sum_l\frac{\lambda_l}{\lambda_l+\alpha},\qquad L=-2\alpha S.
+\end{equation}
+退火版用完整矩阵求逆计算迹；凸优化版用较小 Gram 矩阵的特征值计算迹，并将数值误差产生的负特征值截为零。
+
+停止条件与未满足条件时的更新式分别为
+\begin{align}
+    \left|\frac{L}{\mathcal T}-1\right|&<10^{-3},\\
+    \alpha_{n+1}&=\alpha_n\begin{cases}0.05,&\mathcal T/L<0.05,\\(\mathcal T/L)[1+0.001(u-1/2)],&\text{其它情况},\end{cases}
+\end{align}
+上式的 $u$ 为新的均匀随机数；凸优化版省去随机扰动。迹判据沿用全空间曲率形式，没有投影到归一化约束的切空间。它用于选择 $\alpha$，与固定 $\alpha$ 时的求解收敛判据是两回事。
+
+\section{初始化与平滑}
+初始谱由独立均匀随机数 $v_j\in[0,1)$ 构造：
+\begin{equation}
+    a_j^{(0)}=\frac{v_j}{\Delta\omega\sum_l v_l}.
+\end{equation}
+第一轮外层退火使用 $(r,T_{\mathrm a})=(1,10)$，以后各轮使用 $(0.05,0.001)$，并以上一轮谱为初值。
+
+可选平滑步骤采用半宽为3的局部平均。令 $\mathcal N_j=\{k:|k-j|\leq3,\ -N_w\leq k\leq N_w\}$，则
+\begin{equation}
+    \widetilde a_j=\frac{1}{|\mathcal N_j|}\sum_{k\in\mathcal N_j}a_k,\qquad a_j\leftarrow\frac{\widetilde a_j}{\Delta\omega\sum_l\widetilde a_l}.
+\end{equation}
+每次平滑后，以 $(r,T_{\mathrm a})=(0.005,0.005)$ 再退火一次，保持当前 $\alpha$，不重新执行外层判据。
+
+\section{利用凸性的确定性求解}
+\subsection{归一化权重形式}
+定义频率区间权重、标准化数据和核
+\begin{equation}
+    p_j=\Delta\omega\,a_j,\qquad q_j=\Delta\omega\,m_j,\qquad F_{ij}=\frac{K_{ij}}{\sigma_i\Delta\omega},\qquad b_i=\frac{y_i}{\sigma_i}.
+\end{equation}
+固定 $\alpha>0$ 的原始问题等价于
+\begin{equation}
+    \min_{p\in\mathcal P}\Phi(p),\qquad \Phi(p)=\frac12\|Fp-b\|_2^2+\alpha\sum_jp_j\log\frac{p_j}{q_j},\qquad \mathcal P=\{p\geq0:\bm1^{\mathsf T}p=1\}.
+    \label{eq:conv-primal}
+\end{equation}
+约定 $0\log0=0$。当 $q_j>0$ 时，熵项严格凸，$\mathcal P$ 为紧凸集，因此最优解存在且唯一。有限数据及核下，熵在边界处的导数使精确最优权重为正。
+
+\subsection{消去谱变量得到对偶问题}
+利用二次项的表示
+\begin{equation}
+    \frac12\|r\|_2^2=\max_z\left(z^{\mathsf T}r-\frac12z^{\mathsf T}z\right),
+\end{equation}
+可将式\eqref{eq:conv-primal} 写为原始变量 $p$ 与对偶变量 $z\in\mathbb R^{N_\tau}$ 的鞍点问题。对固定 $z$，需要求
+\begin{equation}
+    \min_{p\in\mathcal P}\left[\alpha\sum_jp_j\log\frac{p_j}{q_j}+z^{\mathsf T}Fp\right].
+\end{equation}
+为归一化约束引入乘子 $\nu$，驻点条件为
+\begin{equation}
+    \alpha\left(\log\frac{p_j}{q_j}+1\right)+(F^{\mathsf T}z)_j+\nu=0.
+\end{equation}
+由 $\sum_jp_j=1$ 消去 $\nu$，得到
+\begin{equation}
+    Z(z)=\sum_jq_j\exp\left[-\frac{(F^{\mathsf T}z)_j}{\alpha}\right],\qquad p_j(z)=\frac{q_j\exp[-(F^{\mathsf T}z)_j/\alpha]}{Z(z)}.
+    \label{eq:conv-reconstruction}
+\end{equation}
+代回后，内层极小值为 $-\alpha\log Z(z)$。因此对偶问题为
+\begin{equation}
+    \max_z\mathcal D(z),\qquad \mathcal D(z)=-\frac12z^{\mathsf T}z-b^{\mathsf T}z-\alpha\log Z(z).
+\end{equation}
+此有限维凸问题满足强对偶。实际求解其负值的无约束最小化问题：
+\begin{equation}
+    \min_z h(z),\qquad h(z)=\frac12z^{\mathsf T}z+b^{\mathsf T}z+\alpha\log Z(z).
+\end{equation}
+式\eqref{eq:conv-reconstruction} 自动保证正性与归一化，不需要在迭代中另外修正谱。最终 $a_j=p_j/\Delta\omega$。
+
+\subsection{解析梯度与 Hessian}
+记 $\overline f=Fp$，则
+\begin{align}
+    \nabla h(z)&=z+b-Fp,\\
+    \nabla^2h(z)&=I+\frac1\alpha F\left[\operatorname{diag}(p)-pp^{\mathsf T}\right]F^{\mathsf T}.
+\end{align}
+其中括号内为权重分布的协方差矩阵，半正定，故 $\nabla^2h\succeq I$。对偶目标严格凸，驻点满足
+\begin{equation}
+    z_\star=Fp_\star-b.
+\end{equation}
+数值实现使用等价的中心化形式
+\begin{equation}
+    \nabla^2h=I+\frac1\alpha\sum_jp_j(F_{:j}-\overline f)(F_{:j}-\overline f)^{\mathsf T}.
+\end{equation}
+设 $\ell_j=\log q_j-(F^{\mathsf T}z)_j/\alpha$，则通过
+\begin{equation}
+    \log Z=\operatorname{logsumexp}(\ell),\qquad p_j=\exp(\ell_j-\log Z)
+\end{equation}
+计算权重，避免直接计算未归一化的大指数。极小权重在浮点运算中仍可能下溢为零。
+
+当前采用带解析 Hessian 的信赖域算法。每步在半径 $\rho$ 内近似求解
+\begin{equation}
+    \min_{\|s\|_2\leq\rho}\left[\nabla h(z)^{\mathsf T}s+\frac12s^{\mathsf T}\nabla^2h(z)s\right],
+\end{equation}
+根据实际下降与模型预测下降的符合程度接受步长并调整 $\rho$。因此不需要随机退火或人工降温。
+
+\subsection{原始---对偶间隙}
+对任意有限 $z$，由式\eqref{eq:conv-reconstruction} 得到可行谱 $p(z)$。令 $r=Fp-b$，有
+\begin{equation}
+    \alpha\sum_jp_j\log\frac{p_j}{q_j}=-z^{\mathsf T}Fp-\alpha\log Z.
+\end{equation}
+从而原始---对偶间隙可化简为
+\begin{align}
+    \Phi(p(z))-\mathcal D(z)&=\frac12\|r\|_2^2+\frac12\|z\|_2^2-z^{\mathsf T}r\\
+    &=\frac12\|z-r\|_2^2=\frac12\|\nabla h(z)\|_2^2.
+\end{align}
+若最优原始目标为 $\Phi_\star$，弱对偶给出
+\begin{equation}
+    0\leq\Phi(p(z))-\Phi_\star\leq\frac12\|\nabla h(z)\|_2^2.
+\end{equation}
+因此间隙直接控制当前谱的目标函数误差。当前实现接受固定 $\alpha$ 的解，当
+\begin{equation}
+    \frac12\|\nabla h(z)\|_2^2\leq10^{-8}\max(1,|\Phi(p(z))|).
+\end{equation}
+这一检查独立于通用优化器的退出消息。外层 $\alpha$ 选择仍使用前述熵与曲率迹判据；固定 $\alpha$ 的凸性与对偶间隙，并不构成该外层规则的重新推导。
+
+\section{在 SVD 系数空间做凸优化}
+若 QMC 直接提供虚时间基函数 $u_l(\tau)$ 下的系数 $c_l$，可将连续核投影到同一组基函数：
+\begin{equation}
+    \mathcal K_l(\omega)=\int_0^\beta u_l(\tau)\frac{e^{-\tau\omega}}{1+e^{-\beta\omega}}\,d\tau,\qquad c_l^{\mathrm{fit}}=-\Delta\omega\sum_j\mathcal K_l(\omega_j)a_j.
+\end{equation}
+将标准化数据和核改为 $b_l=-c_l/\sigma_l$ 与 $F_{lj}=\mathcal K_l(\omega_j)/\sigma_l$ 后，仍求解式\eqref{eq:conv-primal}，谱权重约束与默认模型不变。这种做法直接拟合系数，无需先重建 $G(\tau)$；系数误差目前仍按对角权重处理。
+
+\section{程序接口与实现对应}
+\subsection{文件与参数}
+统一入口位于 \path{src/maxent/maxent.py}。直接执行脚本会调用 \texttt{main()}，默认使用退火。在输入文件所在目录执行：
+\begin{verbatim}
+python /path/to/DMFT/src/maxent/maxent.py
+\end{verbatim}
+程序依赖 NumPy 和 SciPy，Numba 为可选加速依赖。\texttt{Gtau.dat} 提供 $N_\tau$ 行两列 $\tau_i,G(\tau_i)$；输出 \texttt{dos} 提供 $M$ 行两列 $\omega_j,a_j$。
+
+\texttt{maxent\_input.dat} 每行一个值，按下表顺序读取，支持行尾 \texttt{\#} 注释：
+\begin{center}
+    \begin{tabular}{ll}
+        \toprule
+        参数 & 对应定义\\
+        \midrule
+        \texttt{Nt} & $N_\tau$\\
+        \texttt{idg} & 0：相对误差；其它值：绝对误差\\
+        \texttt{deltag} & $\delta g$\\
+        \texttt{beta} & $\beta$\\
+        \texttt{Nw, Dw} & $N_w,\Delta\omega$，分别占一行\\
+        \texttt{Asteps} & 每次退火的 sweep 数\\
+        \texttt{alpha0} & 初始 $\alpha$\\
+        \texttt{Nr} & 平滑并重新退火的次数\\
+        \texttt{iflat} & 默认模型选择\\
+        \bottomrule
+    \end{tabular}
+\end{center}
+默认模型的未归一化值为
+\begin{equation}
+    \widetilde m_j=\begin{cases}1,&\texttt{iflat}=0,\\ \exp[-\omega_j^2/(N_w\Delta\omega)],&\texttt{iflat}=1,\end{cases}\qquad m_j=\frac{\widetilde m_j}{\Delta\omega\sum_l\widetilde m_l}.
+\end{equation}
+高斯表达式按旧代码的输入数值约定实现，没有独立宽度参数，也不自动补偿能量单位的变换。
+
+\subsection{函数与迭代控制}
+\texttt{read\_inputs} 读取数据和参数。统一入口准备实频网格、误差、默认模型和延拓核。\texttt{maxent} 执行固定 $\alpha$ 的退火；\texttt{solve\_anneal} 执行外层迭代和平滑；\texttt{main} 写出谱。
+
+三个 Python 版本用 \texttt{spectrum} 表示谱密度数组 $(a_j)$，用 \texttt{omega} 表示实频网格，用 \texttt{domega} 表示 $\Delta\omega$。输出文件统一为两列的 \texttt{dos}。退火版与虚时间凸优化版均用 \texttt{np.logaddexp} 计算核的对数分母。
+
+退火版沿用 Fortran 的外层停止条件，不设轮数上限。随机数生成器默认在求解开始时用种子 0 初始化一次，初始化、退火、外层扰动和平滑共享同一随机数序列。随机数序列和部分浮点运算与 Fortran 不同，因此不保证逐位一致。
+
+\subsection{凸优化版本的接口}
+凸优化与退火的求解代码均位于 \path{src/maxent/maxent.py}。\texttt{method} 是 Python 函数参数。在输入文件所在目录，将模块目录加到 \texttt{PYTHONPATH} 后即可调用：
+\begin{verbatim}
+PYTHONPATH=/path/to/DMFT/src/maxent \
+    python -c "from maxent import main; main(method='convex')"
+\end{verbatim}
+如果模块目录已在搜索路径中，也可以在 Python 代码中直接写：
+\begin{verbatim}
+from maxent import main
+main(method='convex')
+\end{verbatim}
+它复用相同的输入读取、误差、默认模型和频率网格，使用 SciPy 的 \texttt{trust-exact} 求解对偶问题，初始对偶变量为零。\texttt{solve\_alpha} 返回固定 $\alpha$ 的谱和诊断，\texttt{solve\_conv} 执行外层迭代。
+
+此版本将 \texttt{Asteps} 用作每次对偶求解的最大迭代数，不使用 \texttt{Nr}，也不对凸最优解追加平滑。\texttt{solve\_conv} 成功时只返回谱数组。固定 $\alpha$ 的间隙检查失败或外层 60 轮未收敛时抛出异常。
+
+\subsection{系数空间版本的接口}
+\path{src/maxent/maxent_coeff.py} 读取 \texttt{Gcoeff.dat}（两列 $l,c_l$）和 \texttt{basis.dat}（首列为 $\tau$，其余各列为匹配的 $u_l(\tau)$）。\texttt{maxent\_input.dat} 的首项此时是系数个数。脚本用三次样条插值基函数，并在各虚时间区间用 Gauss--Legendre 求积构造投影核，再调用相同的凸优化求解器。
+在这些输入文件所在的目录运行：
+\begin{verbatim}
+python /path/to/DMFT/src/maxent/maxent_coeff.py
+\end{verbatim}
+
+\subsection{谱文件与诊断输出}
+三个版本都将实频和谱密度写入两列 \texttt{dos}。诊断信息直接打印到标准输出，不累积迭代历史，也不另写 JSON 文件。
+
+退火版在运行中打印 sweep 编号 \texttt{ann-step}、回代误差 \texttt{chi2} 和计入接受率统计的接受次数 \texttt{accepted}；每次外层退火结束后打印 $\alpha$、$-2\alpha S$、曲率迹 $\mathcal T$ 和比值 $L/\mathcal T$。系数空间与虚时间凸优化版使用同一套日志，每轮外层迭代打印一行逗号分隔的 \texttt{key=value} 文本。主要字段为：
+\begin{itemize}
+    \item \texttt{alpha}、\texttt{chi2}：本轮正则权重及所用数据空间中的回代误差。
+    \item \texttt{objective}、\texttt{dual\_objective}、\texttt{duality\_gap}：原始目标值、对偶值及间隙，用于检查固定 $\alpha$ 的求解质量。
+    \item \texttt{dual\_gradient\_max}、\texttt{iterations}、\texttt{solver\_message}：最大对偶梯度分量绝对值、优化步数和求解器消息。
+    \item \texttt{kl}、\texttt{normalization}、\texttt{alpha\_ratio}：相对熵 $\sum_j p_j\log(p_j/q_j)$、总谱权重 $\sum_j p_j$ 和外层判据 $2\alpha\,\texttt{kl}/\mathcal T$。比值与 1 的差小于 $10^{-3}$ 时停止。
+\end{itemize}
+
+\subsection{与格林函数及自能延拓脚本的衔接}
+\texttt{Gw\_AC.py} 和 \texttt{Sigma\_AC.py} 使用当前 Python 解释器直接执行 \texttt{maxent.py}，因此采用默认退火。标准输出与错误分别保存到 \texttt{running.log} 和 \texttt{running.error}。前者直接延拓杂质格林函数，并可随后进行高斯展宽。
+
+后者先构造辅助格林函数
+\begin{equation}
+    G_{\mathrm{aux}}(i\omega_n)=\left[i\omega_n-\Sigma(i\omega_n)+\Sigma_\infty\right]^{-1},
+\end{equation}
+其中当前脚本以最高 Matsubara 频点的复自能近似 $\Sigma_\infty$。经过逆傅里叶变换与 MaxEnt 后，使用
+\begin{align}
+    G_{\mathrm{aux}}(\omega+i\eta)&\simeq\int\frac{A_{\mathrm{aux}}(\epsilon)}{\omega-\epsilon+i\eta}\,d\epsilon,\\
+    \Sigma_{\mathrm{out}}(\omega)&=\omega-G_{\mathrm{aux}}(\omega+i\eta)^{-1}+\Sigma_\infty.
+\end{align}
+这里记录的是当前调用脚本的实际形式：首项为实频 $\omega$，积分采用梯形权重，其端点权重与 MaxEnt 内部的矩形求积不同。
+\end{document}

@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 import numpy as np
+import subprocess
+from pathlib import Path
 from scipy import integrate, interpolate, optimize
 import os, sys, shutil
 from mpi4py import MPI
 
-maxent_exe="/data/home/df_iopcas_wuzirui/apps/DMFT-dev/bin/maxent"
+# maxent_exe="/data/home/df_iopcas_wuzirui/apps/DMFT-dev/bin/maxent"
+maxent_script = Path(__file__).resolve().parents[1] / "src" / "maxent" / "maxent.py"
 
 def Broad(width, om, fw):
     '''
@@ -173,7 +176,7 @@ if __name__ == '__main__':
         ofs.write("%d         #Asteps:number of annealig steps\n"%params['Asteps'])
         ofs.write(str(params['alpha0']) + "         #alpha0:starting alpha\n")
         ofs.write("%d         #Nr:number of smooth runs\n"%params['Nr'])
-        ofs.write("%d         #iflat:iflat=0 : constant model, iflat=1 : gaussian of width gwidth, iflat=2 : input using file model.dat\n"%params['iflat'])
+        ofs.write("%d         #iflat:iflat=0 : constant model, iflat=1 : gaussian model\n"%params['iflat'])
         ofs.close()
 
         #write Gtau.dat
@@ -184,7 +187,9 @@ if __name__ == '__main__':
         Gf.close()
 
         #Analytical continuation
-        os.system(maxent_exe + " 1>running.log 2>running.error")
+        with open("running.log", "w") as log, open("running.error", "w") as error:
+            subprocess.run([sys.executable, str(maxent_script)],
+                           stdout=log, stderr=error, check=True)
         #Smothing
         DOS=np.loadtxt("dos")
         Aw = Broad(params['bwdth'], DOS[:,0], DOS[:,1])
