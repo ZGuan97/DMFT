@@ -13,7 +13,7 @@
 namespace
 {
   // For Slater-Condon interactions, U denotes F0, so the legacy conversion
-  // from Kanamori U to averU does not apply. Use F0 and the shell-averaged J
+  // from Kanamori U to Uavg does not apply. Use F0 and the shell-averaged J
   // in the DC formula; when explicit Slater integrals are supplied, derive
   // both values from them to keep DC consistent with the impurity interaction.
   // The returned vector contains {U_dc, J_dc} in Hartree.
@@ -65,20 +65,19 @@ namespace DMFT
         int nspin_tmp=nspin;
         if(SOC) nspin_tmp=4;
 
-        const double Norb = 2*m_tot;
-        double averU = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))
-                              *(Norb-2) )/(Norb-1.0);
+        // const double Norb = 2*m_tot;
+        // double Uavg = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))
+        //                       *(Norb-2) )/(Norb-1.0);
 
         //K. Held. Adv. Phys., 56(2007):829--926
-        // const double averU = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))*(m_tot-1.0) +
-        //                       (atom.Uval(iatom)-3.0*atom.Jval(iatom))*(m_tot-1.0))/(2*m_tot-1.0);
+        double Uavg = (atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))*(m_tot-1.0) + (atom.Uval(iatom)-3.0*atom.Jval(iatom))*(m_tot-1.0))/(2*m_tot-1.0);
 
-        double averJ = atom.Jval(iatom);
+        double Javg = atom.Jval(iatom);
         if(in.get().flag_interaction_type == 3)
         {
           const auto parameters = slater_dc_parameters(ineq,atom);
-          averU = parameters[0];
-          averJ = parameters[1];
+          Uavg = parameters[0];
+          double Javg = parameters[1];
         }
 
         if(this->V_dc[ineq].empty()) this->V_dc[ineq].resize(nspin_tmp);
@@ -88,21 +87,21 @@ namespace DMFT
           if(this->V_dc[ineq][is].empty()) 
             this->V_dc[ineq][is].resize(m_tot*m_tot, zero);
  
-          const double FLL_nominal = averU*(atom.occ_num(iatom,0)+atom.occ_num(iatom,1)-0.5)
-                            -averJ*(atom.occ_num(iatom,is)-0.5);
+          const double Vdc_FLL =
+            Uavg * (atom.occ_num(iatom,0) + atom.occ_num(iatom,1)-0.5);
 
           if(hybrid_func){
             if(hyf_dc_mode==1){
-              // FLL_nominal + alpha * (U-J) * (0.5 - n_m_sigma).
+              // Vdc_FLL + alpha * (U-J) * (0.5 - n_m_sigma).
               // When alpha=1, this becomes:
               //   U*(Nf-0.5) - J*(Nf_sigma-0.5) + (U-J)*(0.5-n_m_sigma)
               // = U*(Nf-n_m_sigma) - J*(Nf_sigma-n_m_sigma),
               // which is exactly the original Jacob 2008 form.
               for(int m=0; m<m_tot; m++){
-                const double DC_HF = (averU-averJ) * (0.5 - local_occ[iatom][is][m]);
+                const double DC_HF = (Uavg-Javg) * (0.5 - local_occ[iatom][is][m]);
 
                 this->V_dc.at(ineq).at(is).at(m*m_tot+m) =
-                  std::complex<double>(FLL_nominal + hyb_xc_coeff*DC_HF, 0.0);
+                  std::complex<double>(Vdc_FLL + hyb_xc_coeff*DC_HF, 0.0);
               }
             }
             else if(hyf_dc_mode==2){
@@ -124,10 +123,10 @@ namespace DMFT
                                << shell_shift_ev << " eV" << std::endl;
 
               for(int m=0; m<m_tot; m++){
-                const double DC_HF = (averU-averJ) * (0.5 - local_occ[iatom][is][m]);
+                const double DC_HF = (Uavg-Javg) * (0.5 - local_occ[iatom][is][m]);
 
                 this->V_dc.at(ineq).at(is).at(m*m_tot+m) =
-                  std::complex<double>(FLL_nominal + hyb_xc_coeff*DC_HF + shell_shift, 0.0);
+                  std::complex<double>(Vdc_FLL + hyb_xc_coeff*DC_HF + shell_shift, 0.0);
               }
             }
             else{
@@ -137,7 +136,7 @@ namespace DMFT
           }
           else{          
             for(int m=0; m<m_tot; m++)
-              this->V_dc[ineq][is][m*m_tot+m] = std::complex<double>(FLL_nominal, 0.0);  //*atom.occ_num_m()[iatom][is][m];
+              this->V_dc[ineq][is][m*m_tot+m] = std::complex<double>(Vdc_FLL, 0.0);  //*atom.occ_num_m()[iatom][is][m];
           }
         
          GLV::ofs_running << "===========impurity:" << ineq << " spin:" << is << "========\n";
@@ -148,8 +147,8 @@ namespace DMFT
 
          GLV::ofs_running << std::endl;
          if(in.get().flag_interaction_type == 3)
-           GLV::ofs_running << "DC parameters: U_DC=" << averU*GLC::Hartree_to_eV
-             << " eV J_DC=" << averJ*GLC::Hartree_to_eV << " eV N_DC="
+           GLV::ofs_running << "DC parameters: U_DC=" << Uavg*GLC::Hartree_to_eV
+             << " eV J_DC=" << Javg*GLC::Hartree_to_eV << " eV N_DC="
              << atom.occ_num(iatom,0)+atom.occ_num(iatom,1)
              << " N_DC_spin=" << atom.occ_num(iatom,is) << '\n';
         
@@ -208,14 +207,14 @@ namespace DMFT
         if(SOC) nspin_tmp=4;
 
         const double Norb = 2*m_tot;
-        double averU = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))
+        double Uavg = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))
                               *(Norb-2) )/(Norb-1.0);
-        double averJ = atom.Jval(iatom);
+        double Javg = atom.Jval(iatom);
         if(in.get().flag_interaction_type == 3)
         {
           const auto parameters = slater_dc_parameters(ineq,atom);
-          averU = parameters[0];
-          averJ = parameters[1];
+          Uavg = parameters[0];
+          Javg = parameters[1];
         }
 
         if(this->V_dc[ineq].empty()) this->V_dc[ineq].resize(nspin_tmp);
@@ -225,7 +224,7 @@ namespace DMFT
         // HYF correction used in the FLL branch on top of the nominal average term.
         const double nominal_nf_sigma = nominal_nf / 2.0;
         const double Vdc_nominal =
-          averU*(nominal_nf - 0.5) - averJ*(nominal_nf_sigma - 0.5);
+          Uavg*(nominal_nf - 0.5) - Javg*(nominal_nf_sigma - 0.5);
 
         for(int is=0; is<nspin_tmp; is++)
         {
@@ -242,7 +241,7 @@ namespace DMFT
             // When hyf_xc_alpha = 1, this reduces to
             // U * (nf - n_m,sigma) - J * (nf_sigma - n_m,sigma).
             for(int m=0; m<m_tot; m++){
-              const double DC_HF = (averU-averJ) * (0.5 - local_occ[iatom][is][m]);
+              const double DC_HF = (Uavg-Javg) * (0.5 - local_occ[iatom][is][m]);
               this->V_dc[ineq][is][m*m_tot+m] =
                 std::complex<double>(Vdc_nominal + hyb_xc_coeff*DC_HF, 0.0);
             }
@@ -258,8 +257,8 @@ namespace DMFT
                              << GLC::Hartree_to_eV*this->V_dc[ineq][is][m*m_tot+m].real();
           GLV::ofs_running << std::endl;
           if(in.get().flag_interaction_type == 3)
-            GLV::ofs_running << "DC parameters: U_DC=" << averU*GLC::Hartree_to_eV
-              << " eV J_DC=" << averJ*GLC::Hartree_to_eV << " eV N_DC="
+            GLV::ofs_running << "DC parameters: U_DC=" << Uavg*GLC::Hartree_to_eV
+              << " eV J_DC=" << Javg*GLC::Hartree_to_eV << " eV N_DC="
               << nominal_nf << " N_DC_spin=" << nominal_nf_sigma << '\n';
         }
       }
