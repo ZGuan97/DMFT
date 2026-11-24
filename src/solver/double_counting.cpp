@@ -65,19 +65,20 @@ namespace DMFT
         int nspin_tmp=nspin;
         if(SOC) nspin_tmp=4;
 
-        // const double Norb = 2*m_tot;
-        // double Uavg = ( atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))
-        //                       *(Norb-2) )/(Norb-1.0);
-
-        //K. Held. Adv. Phys., 56(2007):829--926
-        double Uavg = (atom.Uval(iatom) + (atom.Uval(iatom)-2.0*atom.Jval(iatom))*(m_tot-1.0) + (atom.Uval(iatom)-3.0*atom.Jval(iatom))*(m_tot-1.0))/(2*m_tot-1.0);
-
-        double Javg = atom.Jval(iatom);
-        if(in.get().flag_interaction_type == 3)
+        double Uavg, Javg;
+        if(in.get().flag_interaction_type == 1 ||
+           in.get().flag_interaction_type == 2 ||
+           in.get().flag_interaction_type == 4)
+        {
+            //K. Held. Adv. Phys., 56(2007):829--926
+            Uavg = atom.Uval(iatom) - 5.0*(m_tot-1.0)*atom.Jval(iatom)/(2.0*m_tot-1.0);
+            Javg = 0.0;
+        }
+        else if(in.get().flag_interaction_type == 3)
         {
           const auto parameters = slater_dc_parameters(ineq,atom);
           Uavg = parameters[0];
-          double Javg = parameters[1];
+          Javg = parameters[1];
         }
 
         if(this->V_dc[ineq].empty()) this->V_dc[ineq].resize(nspin_tmp);
@@ -87,8 +88,8 @@ namespace DMFT
           if(this->V_dc[ineq][is].empty()) 
             this->V_dc[ineq][is].resize(m_tot*m_tot, zero);
  
-          const double Vdc_FLL =
-            Uavg * (atom.occ_num(iatom,0) + atom.occ_num(iatom,1)-0.5);
+            const double Vdc_FLL =
+                Uavg * (atom.occ_num(iatom,0) + atom.occ_num(iatom,1) - 0.5) - Javg * (atom.occ_num(iatom,is) - 0.5);
 
           if(hybrid_func){
             if(hyf_dc_mode==1){
