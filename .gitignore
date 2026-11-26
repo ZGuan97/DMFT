@@ -3,6 +3,7 @@ DFTDMFT
 /build/Makefile
 /build/impurities/
 /build/maxent/
+/build/minimal/
 *.o
 *.so
 *.mod

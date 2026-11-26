@@ -1,0 +1,75 @@
+CXX = mpicxx
+CXXFLAGS = -O2 -g -std=c++14
+CPPFLAGS = -DDMFT_MINIMAL_BUILD
+
+ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/..)
+BUILD_DIR := $(ROOT_DIR)/build/minimal
+TARGET := $(BUILD_DIR)/DFTDMFT
+
+INCLUDES = -I$(ROOT_DIR)/thirdparty/eigen-3.4.0
+DEPFLAGS = -MMD -MP
+
+SOURCES := \
+	src/main.cpp \
+	src/parameters.cpp \
+	src/mpi_environment.cpp \
+	src/global_variables.cpp \
+	src/utilities.cpp \
+	src/correlated_atoms.cpp \
+	src/KS_bands.cpp \
+	src/tetrahedron.cpp \
+	src/KS_eigenvectors.cpp \
+	src/overlap_matrix.cpp \
+	src/overlap_matrix_aims.cpp \
+	src/overlap_matrix_abacus.cpp \
+	src/input.cpp \
+	src/timer.cpp \
+	src/solver.cpp \
+	src/projector.cpp \
+	src/chemical_potential.cpp \
+	src/density_matrix.cpp \
+	src/lattice.cpp \
+	src/Hilbert_space.cpp \
+	src/self_energy.cpp \
+	src/self_energy_imaginary_aixs.cpp \
+	src/self_energy_real_aixs.cpp \
+	src/double_counting.cpp \
+	src/coulomb_tensor.cpp \
+	src/Kanamori_parameterization.cpp \
+	src/Anderson_impurity.cpp \
+	src/PACS_cthyb.cpp \
+	src/alps_cthyb.cpp \
+	src/alps_cthyb_segment.cpp \
+	src/rutgers_cthyb.cpp \
+	src/rutgers_atomic.cpp \
+	src/comctqmc.cpp \
+	src/Slater_Condon_parameterization.cpp \
+	src/iQIST_narcissus.cpp \
+	src/math_zone.cpp \
+	src/spectrum.cpp \
+	src/charge_scf.cpp \
+	src/charge_scf_aims.cpp \
+	src/charge_scf_abacus.cpp
+
+OBJECTS := $(addprefix $(BUILD_DIR)/,$(notdir $(SOURCES:.cpp=.o)))
+DEPS := $(OBJECTS:.o=.d)
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $@
+
+$(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDES) $(DEPFLAGS) -c $< -o $@
+
+$(BUILD_DIR):
+	mkdir -p $@
+
+clean:
+	rm -rf $(BUILD_DIR)
+
+vpath %.cpp $(ROOT_DIR)/src $(ROOT_DIR)/src/para $(ROOT_DIR)/src/solver
+
+-include $(DEPS)

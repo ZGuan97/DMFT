@@ -58,6 +58,24 @@ This is optional. It's required if you want to do DFT+DMFT calcualtions with FHI
     ```
     to the file .bashrc
 
+### Minimal macOS build
+
+The minimal build requires only Apple Clang, Open MPI (`mpicxx` on `PATH`), and the Eigen copy in `thirdparty/eigen-3.4.0`. It does not require MKL, Fortran, GSL, external DFT libraries, or third-party impurity solvers.
+
+From the repository root, run:
+
+```bash
+make -f build/Makefile.minimal -j
+```
+
+The executable is written to `build/minimal/DFTDMFT`. Incremental builds are supported; remove only this build directory with:
+
+```bash
+make -f build/Makefile.minimal clean
+```
+
+PACS, iQIST, Rutgers CTHYB, and ComCTQMC remain available as C++ interfaces, but selecting them in the minimal build raises an explicit error. FHI-aims and ABACUS backends are not enabled, and this build is intended for compilation and interface validation rather than a complete DFT+DMFT run.
+
 ### Building DFT+DMFT codes
 i) Go to the directory `build/` under the root directory of the DFT+DMFT code
 

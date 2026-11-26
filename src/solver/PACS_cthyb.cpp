@@ -17,10 +17,13 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <stdexcept>
 #include <cstdlib>   //Use exit function
 #include <unistd.h>
 
+#ifndef DMFT_MINIMAL_BUILD
 extern "C" void pacs_run_();
+#endif
 
 using DFT_plus_DMFT::Matrix;
 
@@ -530,6 +533,9 @@ namespace DMFT
           const int DMFT_step,
           DFT_output::atoms_info& atom )
   {
+#ifdef DMFT_MINIMAL_BUILD
+    throw std::runtime_error("PACS is unavailable in the minimal build.");
+#else
     debug::codestamp("PACS_CTHYB::impurities_solving");
 
     const int ineq_num = atom.inequ_atoms();
@@ -593,6 +599,7 @@ namespace DMFT
       MPI_Barrier(MPI_COMM_WORLD);  //Blocks until all processes reach here
     }//ineq
 
+#endif
     return;
   }
 

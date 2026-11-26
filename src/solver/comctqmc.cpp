@@ -2,7 +2,9 @@
 #include "../constants.h"
 #include "../mpi_environment.h"
 #include "../global_variables.h"
+#ifndef DMFT_MINIMAL_BUILD
 #include "../../thirdparty/ComCTQMC/include/io/Vector.h"
+#endif
 #include <mpi.h>
 #include <cerrno>
 #include <cmath>
@@ -16,6 +18,7 @@
 #include <algorithm>
 #include <unistd.h>
 
+#ifndef DMFT_MINIMAL_BUILD
 namespace
 {
     std::string impurity_directory(int charge_step, int dmft_step, int q)
@@ -42,6 +45,7 @@ namespace
         return path;
     }
 }
+#endif
 
 using DFT_plus_DMFT::Matrix;
 
@@ -52,6 +56,9 @@ namespace DMFT
         const std::vector<std::vector<std::complex<double>>>& delta,
         const interaction_tensor& U,long long thermalisation_steps,long long measurement_steps)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         const int L=levels.size();
         const int N=delta[0].size();
         const double unit=GLC::Hartree_to_eV;
@@ -102,6 +109,7 @@ namespace DMFT
         bath << "}\n";
         params.flush(); bath.flush();
         if(!params || !bath) throw std::runtime_error("Failed writing ComCTQMC input");
+#endif
     }
 
     void ComCTQMC::output(int charge_step,int dmft_step,double mu,input_info& in,
@@ -110,6 +118,9 @@ namespace DMFT
         const std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>& hyb,
         coulomb_tensor& Umat)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         executable=in.get().comctqmc_exe;
         evalsim=in.get().comctqmc_evalsim;
         launcher=in.get().comctqmc_launcher;
@@ -142,11 +153,15 @@ namespace DMFT
                 Umat.Coulomb_matrix()[q],in.get().warmup,
                 in.get().mc_step);
         }
+#endif
     }
 
     void ComCTQMC::run(const std::string& directory,const std::string& executable,
         const std::string& evalsim,const std::string& launcher,int nproc)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         if(nproc<0) throw std::runtime_error("Invalid ComCTQMC MPI process count");
         const std::string command="cd "+shell_quote(directory)+" && "
             +shell_quote(executable_path(launcher))+" "+std::to_string(nproc)+" "
@@ -154,12 +169,16 @@ namespace DMFT
             +" > launch.log 2>&1";
         if(std::system(command.c_str())!=0)
             throw std::runtime_error("ComCTQMC failed in "+directory+"; inspect launch.log, ctqmc.log and evalsim.log");
+#endif
     }
 
     void ComCTQMC::read_functions(const std::string& directory,double beta,int L,int N,
         std::vector<std::vector<std::complex<double>>>& G,
         std::vector<std::vector<std::complex<double>>>& S)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         jsx::value params,obs;
         std::ifstream input(directory+"/params.json"),output(directory+"/params.obs.json");
         if(!input || !output) throw std::runtime_error("Cannot read ComCTQMC results in "+directory);
@@ -187,11 +206,15 @@ namespace DMFT
                 S[a][n]=s[n]/unit;
             }
         }
+#endif
     }
 
     void ComCTQMC::impurities_solving(int charge_step,int dmft_step,
         DFT_output::atoms_info& atom)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         for(int q=0;q<atom.inequ_atoms();q++)
         {
             int status=0;
@@ -218,12 +241,16 @@ namespace DMFT
             }
             if(status) MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
         }
+#endif
     }
 
     void ComCTQMC::read_self_energy(int charge_step,int dmft_step,DFT_output::KS_bands& band,
         input_info& in,DFT_output::atoms_info& atom,
         std::vector<std::vector<std::vector<DFT_plus_DMFT::Matrix>>>& S)
     {
+#ifdef DMFT_MINIMAL_BUILD
+        throw std::runtime_error("ComCTQMC is unavailable in the minimal build.");
+#else
         try {
             const int nspin=band.nspins(),N=in.get().n_omega;
             const int magnetism=in.get().flag_magnetism;
@@ -259,5 +286,6 @@ namespace DMFT
             std::cerr << "ComCTQMC result: " << error.what() << std::endl;
             MPI_Abort(MPI_COMM_WORLD,EXIT_FAILURE);
         }
+#endif
     }
 }
